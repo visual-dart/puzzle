@@ -1,6 +1,6 @@
 part of "main.dart";
 
-typedef void OnHandle({String viewPath, dynamic sourceFile});
+typedef void OnHandle({String viewPath, dynamic sourceFile, String className});
 
 List<List<String>> parseArguments(List<String> arguments) {
   List<List<String>> argus = [];
@@ -30,6 +30,7 @@ class BuildTransformer extends RecursiveAstVisitor<dynamic> {
         List<String> a = deco['arguments'];
         // print("deco => name : $name ; arguments : $a");
         handler(
+            className: node.name.name,
             viewPath: a[0].substring(1, a[0].length - 1),
             sourceFile: this.node);
       });

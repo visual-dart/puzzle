@@ -76,10 +76,11 @@ void parseLib(
   var file =
       parseFile(path: filePath, featureSet: FeatureSet.fromEnableFlags([]));
   // print(DateTime.now().toIso8601String());
-  var transformer =
-      new BuildTransformer(file.unit, ({String viewPath, dynamic sourceFile}) {
+  var transformer = new BuildTransformer(file.unit, (
+      {String viewPath, dynamic sourceFile, String className}) {
     // print(viewPath);
     var result = createXdmlBinding(
+        className: className,
         basedir: basedir,
         group: group,
         sourcePath: filePath,
