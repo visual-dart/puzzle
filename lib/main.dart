@@ -20,6 +20,9 @@ import 'package:watcher/watcher.dart' as watch;
 
 part "main.transform.dart";
 part "main.xdml.dart";
+part "main.xdml.source.dart";
+part "main.xdml.binding.dart";
+part "main.xdml.app.dart";
 
 // dart main.dart --entry=../../../../GIT/fe-assets/assets-flutter/example/lib --group=com.example.lib
 
