@@ -1,11 +1,12 @@
 library xdml;
 
 import 'dart:core';
-
+import 'package:meta/meta.dart';
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/analysis/features.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/src/dart/ast/ast.dart';
 // import "package:source_gen/source_gen.dart";
 // import 'package:build/build.dart';
 
@@ -33,6 +34,8 @@ void parseLib(String filePath) {
   var file =
       parseFile(path: filePath, featureSet: FeatureSet.fromEnableFlags([]));
   print(DateTime.now().toIso8601String());
-  new BuildTransformer(file.unit);
+  new BuildTransformer(file.unit, ({String viewPath}) {
+    print(viewPath);
+  });
   print(DateTime.now().toIso8601String());
 }
