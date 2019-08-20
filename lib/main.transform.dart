@@ -1,6 +1,6 @@
 part of "main.dart";
 
-typedef void OnHandle({@required String viewPath});
+typedef void OnHandle({String viewPath, dynamic sourceFile});
 
 List<List<String>> parseArguments(List<String> arguments) {
   List<List<String>> argus = [];
@@ -15,7 +15,9 @@ List<List<String>> parseArguments(List<String> arguments) {
 class BuildTransformer extends RecursiveAstVisitor<dynamic> {
   AstNode node;
   OnHandle handler;
-  BuildTransformer(this.node, this.handler) {
+  BuildTransformer(this.node, this.handler) {}
+
+  call() {
     node.visitChildren(this);
   }
 
@@ -26,8 +28,10 @@ class BuildTransformer extends RecursiveAstVisitor<dynamic> {
       decos.forEach((name, deco) {
         if (name != 'Binding') return;
         List<String> a = deco['arguments'];
-        print("deco => name : $name ; arguments : $a");
-        handler(viewPath: a[0].substring(1, a[0].length - 1));
+        // print("deco => name : $name ; arguments : $a");
+        handler(
+            viewPath: a[0].substring(1, a[0].length - 1),
+            sourceFile: this.node);
       });
       return null;
     }
@@ -39,12 +43,12 @@ class BuildTransformer extends RecursiveAstVisitor<dynamic> {
     for (var anno in annos) {
       Map<String, dynamic> data = {};
       for (var item in anno.childEntities) {
-        if (item is SimpleIdentifierImpl) {
+        if (item is SimpleIdentifier) {
           data['name'] = item.name;
         }
-        if (item is ArgumentListImpl) {
-          print(item.arguments);
-          print(item.arguments.toList().runtimeType);
+        if (item is ArgumentList) {
+          // print(item.arguments);
+          // print(item.arguments.toList().runtimeType);
           data['arguments'] = item.arguments.map((i) => i.toSource()).toList();
         }
       }
