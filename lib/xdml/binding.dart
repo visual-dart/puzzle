@@ -78,10 +78,7 @@ InsertResult parseInsertExpression(String expression) {
       var insertValue = matched.group(2).trim();
       // print("expr -> [$insertExp]");
       // print("matc -> [$insertValue]");
-      if (insertValue.startsWith("this.")) {
-        return "_delegate." + insertValue.substring(5);
-      }
-      return insertValue;
+      return insertValue.replaceAll("this.", "_delegate.");
     } else {
       return matched.input;
     }

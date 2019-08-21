@@ -1,5 +1,3 @@
-library xdml;
-
 import 'dart:core';
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/analysis/features.dart';
@@ -10,19 +8,23 @@ import 'package:path/path.dart' as path;
 import 'package:watcher/watcher.dart' as watcher;
 
 import 'xdml/index.dart';
+import 'metadata.dart';
 
-void parse({String group, String entry, bool watch}) {
+void parse(Configuration config) {
   // print("$entry/**.dart");
-  final _glob = new glob.Glob("$entry/**.dart");
+  final _glob = new glob.Glob("${config.entry}/**.dart");
   var fileList = _glob.listSync();
   List<List<String>> relations = [];
   for (var i in fileList) {
     if (i.path.endsWith('binding.dart')) continue;
     parseLib(
-        filePath: i.path, relations: relations, basedir: entry, group: group);
+        filePath: i.path,
+        relations: relations,
+        basedir: config.entry,
+        group: config.group);
   }
-  if (!watch) return;
-  var _watcher = watcher.DirectoryWatcher(entry);
+  if (!config.watch) return;
+  var _watcher = watcher.DirectoryWatcher(config.entry);
   _watcher.events.listen((event) {
     var changedPath = path.relative(event.path);
     print("file changed -> $changedPath");
@@ -33,8 +35,8 @@ void parse({String group, String entry, bool watch}) {
       parseLib(
           filePath: changedPath,
           relations: relations,
-          basedir: entry,
-          group: group);
+          basedir: config.entry,
+          group: config.group);
     }
     matched = relations.firstWhere((rela) => changedPath == rela[1],
         orElse: () => null);
@@ -43,8 +45,8 @@ void parse({String group, String entry, bool watch}) {
       parseLib(
           filePath: matched[0],
           relations: relations,
-          basedir: entry,
-          group: group);
+          basedir: config.entry,
+          group: config.group);
     }
     // ignore binding file changes
   });
