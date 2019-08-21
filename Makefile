@@ -1,5 +1,3 @@
 
 build:
-	rm -rf bin
-	mkdir bin
-	dart2aot lib/main.dart bin/main.dart.aot
+	dart2aot bin/main.dart bin/main.dart.aot
