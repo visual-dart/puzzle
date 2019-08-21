@@ -1,4 +1,5 @@
 name: xdml
+version: 0.0.1
 
 environment:
   sdk: ">=2.1.0 <3.0.0"
@@ -10,3 +11,6 @@ dependencies:
   xml: ^3.5.0
   path: ^1.6.4
   dart_style: ^1.2.10
+
+executables:
+  xdml: bin/main.aot
