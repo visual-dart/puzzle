@@ -12,6 +12,7 @@ import 'package:watcher/watcher.dart' as watcher;
 import 'xdml/index.dart';
 
 void parse({String group, String entry, bool watch}) {
+  // print("$entry/**.dart");
   final _glob = new glob.Glob("$entry/**.dart");
   var fileList = _glob.listSync();
   List<List<String>> relations = [];

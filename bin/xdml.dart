@@ -5,11 +5,14 @@ import '../lib/utils.dart';
 
 void main(List<String> arguments) {
   var argus = parseArguments(arguments);
-  var target = argus.firstWhere((i) => i[0] == "entry", orElse: () => null);
-  var target2 = argus.firstWhere((i) => i[0] == "group", orElse: () => null);
-  var target3 = argus.firstWhere((i) => i[0] == "watch", orElse: () => null);
+  var target_entry =
+      argus.firstWhere((i) => i[0] == "entry", orElse: () => null);
+  var target_group =
+      argus.firstWhere((i) => i[0] == "group", orElse: () => null);
+  var target_watch =
+      argus.firstWhere((i) => i[0] == "watch", orElse: () => null);
   return parse(
-      entry: target == null ? "." : target[1],
-      group: target2 == null ? "com.example" : target2[1],
-      watch: target3 == null ? false : target2[1] == "true");
+      entry: target_entry == null ? "." : target_entry[1],
+      group: target_group == null ? "com.example" : target_group[1],
+      watch: target_watch == null ? false : target_watch[1] == "true");
 }
