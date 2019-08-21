@@ -50,7 +50,7 @@ BindingRelation createXdmlBinding(
     decideImportDirectives(references, namespaces, imports, importsNeedAdd);
 
     for (var item in importsNeedAdd) {
-      print(item.toString());
+      // print(item.toString());
       createImportDirective(importsBindingAdd, fac, item);
     }
 
