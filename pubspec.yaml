@@ -13,4 +13,4 @@ dependencies:
   dart_style: ^1.2.10
 
 executables:
-  xdml: bin/main.aot
+  xdml: main
