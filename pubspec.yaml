@@ -5,12 +5,15 @@ environment:
   sdk: ">=2.1.0 <3.0.0"
 
 dependencies:
+  analyzer: ^0.37.1
   build: ^1.0.0
   source_gen: ^0.9.0
   glob: ^1.1.7
   xml: ^3.5.0
   path: ^1.6.4
   dart_style: ^1.2.10
+  front_end: ^0.1.21
+  watcher: ^0.9.7
 
 executables:
   xdml: xdml
