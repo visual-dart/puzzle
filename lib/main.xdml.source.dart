@@ -32,20 +32,6 @@ CompilationUnitMember wrapBuildMethod(CompilationUnitMember i, String className,
     }
     ReturnStatement returnState = returns.elementAt(0);
 
-    returnState.childEntities.forEach((f) {
-      print("1--" + f.runtimeType.toString());
-      if (f is MethodInvocation) {
-        return (f).childEntities.forEach((e) {
-          print("2--" + e.runtimeType.toString());
-          if (e is ArgumentList) {
-            return (e).childEntities.forEach((i) {
-              print("3--" + i.runtimeType.toString());
-            });
-          }
-        });
-      }
-    });
-
     var newArguments = [
       fac.simpleIdentifier(new StringToken(TokenType.STRING, "this", 0)),
       fac.simpleIdentifier(new StringToken(TokenType.STRING, "context", 0)),

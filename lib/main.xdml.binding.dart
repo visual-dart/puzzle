@@ -6,46 +6,46 @@ FunctionExpressionInvocation generateTree(
   var attrs = app.attrs.where((i) => !i.startsWith("slot@@@"));
   var children = app.children;
   var slots = app.slots;
-  List<NamedExpression> content = [];
-  for (var child in children) {
-    if (slots.length > 0) {
-      // var slot = slots.firstWhere((sl)=> sl.startsWith())
-      // var ss = slot.split("###");
-      // var sn = ss.elementAt(1).split("@@@");
-      // var slotName = ss.elementAt(0);
-      // var compNs = sn[0] == "__no_ns__" ? null : sn[0];
-      // var compName = sn[1];
-      // var targetChild = children.firstWhere(
-      //     (c) => c.name == compName && c.ns == compNs,
-      //     orElse: () => null);
-      // if (targetChild == null) {
-      //   throw UnsupportedError(
-      //       "generate tree node failed -> node ${app.fullname}'s slot [$slotName] not found");
-      // }
-      // content.add(fac.namedExpression(
-      //     fac.label(
-      //         fac.simpleIdentifier(
-      //             new StringToken(TokenType.STRING, slotName, 0)),
-      //         new SimpleToken(TokenType.COLON, 0)),
-      //     generateTree(fac, targetChild)));
-    }
-  }
-  if (slots.length > 0) {
-    for (var slot in slots) {
-      var result = parsePairInfo(slot);
-      var targetChild = children.firstWhere(
-          (c) => c.name == result.name && c.ns == result.ns,
-          orElse: () => null);
-      if (targetChild == null) {
-        throw UnsupportedError(
-            "generate tree node failed -> node ${app.fullname}'s slot [${result.slot}] not found");
-      }
+  var text = app.innerText;
+  List<Expression> content = [];
+  if (text != null) {
+    var insert = parseInsertExpression(text);
+    content.add(fac
+        .simpleIdentifier(new StringToken(TokenType.STRING, insert.value, 0)));
+  } else {
+    for (var attr in attrs) {
+      var nss = attr.split("@@@");
+      var insert = parseInsertExpression(nss.elementAt(1));
       content.add(fac.namedExpression(
           fac.label(
               fac.simpleIdentifier(
-                  new StringToken(TokenType.STRING, result.slot, 0)),
+                  new StringToken(TokenType.STRING, nss.elementAt(0), 0)),
               new SimpleToken(TokenType.COLON, 0)),
-          generateTree(fac, targetChild)));
+          fac.simpleIdentifier(
+              new StringToken(TokenType.STRING, insert.value, 0))));
+    }
+    for (var child in children) {
+      var childIdx = children.indexOf(child);
+      if (slots.length > 0) {
+        var slot = slots.firstWhere((sl) => sl.endsWith("&&&$childIdx"),
+            orElse: () => null);
+        // 没找到当前位置的slot，为普通child，暂时不处理
+        if (slot == null) continue;
+        var result = parsePairInfo(slot);
+        var targetChild = children.firstWhere(
+            (c) => c.name == result.name && c.ns == result.ns,
+            orElse: () => null);
+        if (targetChild == null) {
+          throw UnsupportedError(
+              "generate tree node failed -> node ${app.fullname}'s slot [${result.slot}] not found");
+        }
+        content.add(fac.namedExpression(
+            fac.label(
+                fac.simpleIdentifier(
+                    new StringToken(TokenType.STRING, result.slot, 0)),
+                new SimpleToken(TokenType.COLON, 0)),
+            generateTree(fac, targetChild)));
+      }
     }
   }
   return fac.functionExpressionInvocation(
@@ -53,6 +53,34 @@ FunctionExpressionInvocation generateTree(
           new StringToken(TokenType.IDENTIFIER, app.fullname, 0)),
       null,
       fac.argumentList(null, content, null));
+}
+
+class InsertResult {
+  bool valid = false;
+  dynamic value;
+  InsertResult(this.valid, this.value);
+}
+
+InsertResult parseInsertExpression(String expression) {
+  var valid = false;
+  var reg = new RegExp("({{\r*([^}{]+)\r*}})");
+  print("input $expression --> matched:${reg.hasMatch(expression)}");
+  var newExpression = expression.replaceAllMapped(reg, (matched) {
+    if (matched is RegExpMatch) {
+      if (valid == false) valid = true;
+      var insertExp = matched.group(1);
+      var insertValue = matched.group(2).trim();
+      print("expr -> [$insertExp]");
+      print("matc -> [$insertValue]");
+      if (insertValue.startsWith("this.")) {
+        return "_delegate." + insertValue.substring(5);
+      }
+      return insertValue;
+    } else {
+      return matched.input;
+    }
+  });
+  return new InsertResult(valid, valid ? newExpression : "'$newExpression'");
 }
 
 FunctionDeclaration generateBuildFn(
