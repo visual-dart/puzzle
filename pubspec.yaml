@@ -1,5 +1,7 @@
 name: xdml
 version: 0.0.1
+description: xdml reader.
+homepage: https://github.com/miao17game/xdml
 
 environment:
   sdk: ">=2.1.0 <3.0.0"
@@ -17,3 +19,5 @@ dependencies:
 
 executables:
   xdml: xdml
+
+author: bigmogician<bigmogician@outlook.com>
