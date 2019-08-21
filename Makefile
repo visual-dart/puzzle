@@ -1,3 +1,3 @@
 
 build:
-	dart2aot bin/main.dart bin/main.dart.aot
+	dart2aot bin/xdml.dart bin/xdml.dart.aot
