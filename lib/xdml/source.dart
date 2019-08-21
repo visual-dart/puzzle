@@ -37,7 +37,7 @@ CompilationUnitMember wrapBuildMethod(CompilationUnitMember i, String className,
     ReturnStatement returnState = returns.elementAt(0);
 
     var newArguments = [
-      fac.simpleIdentifier(new StringToken(TokenType.STRING, "this", 0)),
+      /* fac.simpleIdentifier(new StringToken(TokenType.STRING, "this", 0)), */
       fac.simpleIdentifier(new StringToken(TokenType.STRING, "context", 0)),
     ];
     variables.forEach((vb) {
@@ -50,7 +50,7 @@ CompilationUnitMember wrapBuildMethod(CompilationUnitMember i, String className,
     onRender(newArguments);
     var functionInvoke = fac.functionExpressionInvocation(
         fac.simpleIdentifier(
-            new StringToken(TokenType.IDENTIFIER, "__build", 0)),
+            new StringToken(TokenType.IDENTIFIER, "bindXDML", 0)),
         null,
         fac.argumentList(new SimpleToken(TokenType.LT, 0), newArguments,
             new SimpleToken(TokenType.LT, 0)));

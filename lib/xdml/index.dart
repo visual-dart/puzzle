@@ -33,7 +33,7 @@ BindingRelation createXdmlBinding(
     var result = parseXmlDocument(paths.xdmlPath, viewPath);
     var references = result.references;
     var namespaces = result.namespaces;
-    var libraries = result.libraries;
+    // var libraries = result.libraries;
 
     List<Directive> otherDirecs = [];
     List<Directive> imports = [];
@@ -41,27 +41,26 @@ BindingRelation createXdmlBinding(
     List<Directive> libDirecs = [];
 
     List<DartReference> importsNeedAdd = [];
-    List<DartReference> importsNeedReplace = [];
-    List<ImportDirective> importsNeedReset = [];
+    List<ImportDirective> importsBindingAdd = [];
 
     AstFactory fac = new AstFactoryImpl();
     var formatter = dartfmt.DartFormatter();
 
     splitDirectives(sourceFile, imports, partDirecs, libDirecs, otherDirecs);
-    decideImportDirectives(
-        references, namespaces, imports, importsNeedReplace, importsNeedAdd);
-    decideImportsNeedReset(
-        imports, importsNeedReplace, importsNeedReset, fac, importsNeedAdd);
+    decideImportDirectives(references, namespaces, imports, importsNeedAdd);
 
-    var libIdentify = decideLibIdentify(group, paths, libraries, fac);
-    libDirecs = decideRealLibDirectives(libraries, libDirecs, fac, libIdentify);
-    partDirecs = decideRealPathDirectives(paths, fac);
+    for (var item in importsNeedAdd) {
+      print(item.toString());
+      createImportDirective(importsBindingAdd, fac, item);
+    }
 
     List<Directive> newDirectives = [];
+    newDirectives.addAll(imports);
     newDirectives.addAll(libDirecs);
     newDirectives.addAll(otherDirecs);
-    newDirectives.addAll(importsNeedReset);
     newDirectives.addAll(partDirecs);
+
+    decideXdmlImportDirectives(paths, fac, newDirectives);
 
     List<SimpleIdentifier> invokeParams = [];
 
@@ -74,13 +73,12 @@ BindingRelation createXdmlBinding(
 
     var newSourceFile =
         updateSpurceFile(fac, sourceFile, newDirectives, newDeclarations);
-    var partOf = createPartOf(fac, paths, libIdentify);
 
     refreshSourceFile(sourcePath, formatter, newSourceFile);
 
     var buildFn = generateBuildFn(fac, invokeParams, className, result.app);
 
-    refreshBindingFile(paths, formatter, partOf, buildFn);
+    refreshBindingFile(paths, formatter, importsBindingAdd, buildFn);
 
     return new BindingRelation(sourcePath, paths.xdmlPath, paths.realView);
   } catch (error) {
@@ -94,10 +92,14 @@ BindingRelation createXdmlBinding(
 }
 
 void refreshBindingFile(Paths paths, dartfmt.DartFormatter formatter,
-    PartOfDirective partOf, FunctionDeclaration buildFn) {
+    List<Directive> imports, FunctionDeclaration buildFn) {
   File bindingFile = new File(paths.realView);
-  var newBinding =
-      formatter.format([partOf.toSource(), buildFn.toSource()].join(("\n")));
+
+  List<AstNode> list = [];
+  list.addAll(imports);
+  list.add(buildFn);
+
+  var newBinding = formatter.format(list.map((i) => i.toSource()).join(("\n")));
   String oldBinding;
   try {
     oldBinding = bindingFile.readAsStringSync();
@@ -147,31 +149,23 @@ PartOfDirective createPartOf(
       null);
 }
 
-List<Directive> decideRealPathDirectives(Paths paths, AstFactory fac) {
-  // print(paths.viewPathSeg);
-  // reset part of any way
-  return [
-    fac.partDirective(
-        null,
-        null,
-        new KeywordToken(Keyword.PART, 0),
-        fac.simpleStringLiteral(
-            new StringToken(TokenType.STRING, "'${paths.viewPathSeg}'", 0), ''),
-        null)
-  ];
-}
-
-List<Directive> decideRealLibDirectives(List<String> libraries,
-    List<Directive> libDirecs, AstFactory fac, LibraryIdentifier libIdentify) {
-  // 在模板提供了library，则强行覆盖
-  // 否则，不进行更新，只进行初始化
-  if (libDirecs.length == 0 || libraries.length > 0) {
-    return [
-      fac.libraryDirective(
-          null, null, new KeywordToken(Keyword.LIBRARY, 0), libIdentify, null)
-    ];
-  }
-  return libDirecs;
+void decideXdmlImportDirectives(
+    Paths paths, AstFactory fac, List<Directive> newDirectives) {
+  var importDire = fac.importDirective(
+      null,
+      [],
+      new KeywordToken(Keyword.IMPORT, 0),
+      fac.simpleStringLiteral(
+          new StringToken(TokenType.STRING, "'${paths.relativeView}'", 1), ''),
+      null,
+      null,
+      null,
+      null,
+      null,
+      null);
+  newDirectives.removeWhere((i) =>
+      (i as ImportDirective).uri.toString() == importDire.uri.toString());
+  newDirectives.add(importDire);
 }
 
 LibraryIdentifier decideLibIdentify(
@@ -190,32 +184,10 @@ LibraryIdentifier decideLibIdentify(
   return libIdentify;
 }
 
-void decideImportsNeedReset(
-    List<Directive> imports,
-    List<DartReference> importsNeedReplace,
-    List<ImportDirective> importsNeedReset,
-    AstFactory fac,
-    List<DartReference> importsNeedAdd) {
-  for (ImportDirective item in imports) {
-    var matched = importsNeedReplace.firstWhere(
-        (i) => item.uri.stringValue == i.reference,
-        orElse: () => null);
-    if (matched == null) {
-      importsNeedReset.add(item);
-    } else {
-      createImportDirective(importsNeedReset, fac, matched);
-    }
-  }
-  for (DartReference item in importsNeedAdd) {
-    createImportDirective(importsNeedReset, fac, item);
-  }
-}
-
 void decideImportDirectives(
     List<DartReference> references,
     Map<String, String> namespaces,
     List<Directive> imports,
-    List<DartReference> importsNeedReplace,
     List<DartReference> importsNeedAdd) {
   for (var r in references) {
     var type = r.type;
@@ -223,14 +195,7 @@ void decideImportDirectives(
     var reference = r.reference;
     var hasAlias = namespaces.containsKey(reference);
     var alias = hasAlias ? namespaces[reference] : null;
-    var matched = imports.firstWhere(
-        (i) => (i as ImportDirective).uri.stringValue == reference,
-        orElse: () => null);
-    if (matched != null) {
-      importsNeedReplace.add(new DartReference(type, name, alias));
-    } else {
-      importsNeedAdd.add(new DartReference(type, name, alias));
-    }
+    importsNeedAdd.add(new DartReference(type, name, alias));
   }
 }
 
@@ -253,9 +218,9 @@ void splitDirectives(
   }
 }
 
-void createImportDirective(List<ImportDirective> importsNeedReset,
-    AstFactoryImpl fac, DartReference matched) {
-  importsNeedReset.add(fac.importDirective(
+void createImportDirective(
+    List<ImportDirective> array, AstFactoryImpl fac, DartReference matched) {
+  array.add(fac.importDirective(
       null,
       [],
       new KeywordToken(Keyword.IMPORT, 0),

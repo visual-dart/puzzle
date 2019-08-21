@@ -6,9 +6,10 @@ class Paths {
   String sourceName;
   String xdmlPath;
   String realView;
+  String relativeView;
   String viewPathSeg;
   Paths(this.relative, this.prefix, this.sourceName, this.xdmlPath,
-      this.realView, this.viewPathSeg);
+      this.realView, this.relativeView, this.viewPathSeg);
 }
 
 Paths readPaths(String basedir, String sourcePath, String viewPath) {
@@ -21,6 +22,7 @@ Paths readPaths(String basedir, String sourcePath, String viewPath) {
   var viewPathSeg =
       sourceName.substring(0, sourceName.length - 5) + ".binding.dart";
   var realView = path.join(prefix, viewPathSeg);
-  return new Paths(
-      relative, prefix, sourceName, xdmlPath, realView, viewPathSeg);
+  var relativeView = path.relative(realView, from: prefix);
+  return new Paths(relative, prefix, sourceName, xdmlPath, realView,
+      relativeView, viewPathSeg);
 }

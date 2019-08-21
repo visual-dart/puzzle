@@ -31,7 +31,7 @@ class DocumentParesResult {
 DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
   File xdml = new File(xdmlPath);
   var xmlDocument = xml.parse(xdml.readAsStringSync());
-  var mains = xmlDocument.findElements("Page", namespace: "dart").toList();
+  var mains = xmlDocument.findElements("Page", namespace: XDML).toList();
   if (mains == null || mains.length == 0) {
     throw new UnsupportedError(
         "resolve xdml $viewPath file failed => XDML Page declaration not found");

@@ -78,7 +78,7 @@ InsertResult parseInsertExpression(String expression) {
       var insertValue = matched.group(2).trim();
       // print("expr -> [$insertExp]");
       // print("matc -> [$insertValue]");
-      return insertValue.replaceAll("this.", "_delegate.");
+      return insertValue /*.replaceAll("this.", "_delegate.")*/;
     } else {
       return matched.input;
     }
@@ -100,17 +100,19 @@ FunctionDeclaration generateBuildFn(
           fac.simpleIdentifier(new StringToken(TokenType.STRING, "Widget", 0)),
           null),
       null,
-      fac.simpleIdentifier(new StringToken(TokenType.STRING, "__build", 0)),
+      fac.simpleIdentifier(new StringToken(TokenType.STRING, "bindXDML", 0)),
       fac.functionExpression(
           null,
           fac.formalParameterList(
             null,
             invokeParams.map((i) {
               var paramName = i.name;
-              var isThis = paramName == "this";
+              // var isThis = paramName == "this";
               var isContext = paramName == "context";
               var typeName =
-                  isThis ? className : isContext ? "BuildContext" : "dynamic";
+                  /* isThis ? className :*/ isContext
+                      ? "BuildContext"
+                      : "dynamic";
               var param = fac.simpleFormalParameter(
                   null,
                   null,
@@ -120,7 +122,9 @@ FunctionDeclaration generateBuildFn(
                           new StringToken(TokenType.STRING, typeName, 0)),
                       null),
                   fac.simpleIdentifier(new StringToken(
-                      TokenType.STRING, isThis ? "_delegate" : paramName, 0)));
+                      TokenType.STRING,
+                      /*isThis ? "_delegate" :*/ paramName,
+                      0)));
               return param;
             }).toList(),
             null,
