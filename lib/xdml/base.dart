@@ -7,12 +7,12 @@ final FLUTTER = "https://github.com/flutter/flutter/wiki";
 final XDML = "https://github.com/miao17game/xdml/wiki/xdml";
 
 class DartReference {
-  String type;
+  String type = null;
   String name;
   String alias = null;
   DartReference(this.type, this.name, this.alias);
 
-  get reference => "$type:$name";
+  get reference => type == null ? name : "$type:$name";
 
   @override
   String toString() {
@@ -79,7 +79,9 @@ DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
           libraries.add(nameAttr.value);
           return;
         }
-        var type = name.local == "Internal" ? "dart" : "package";
+        var type = name.local == "Relative"
+            ? null
+            : name.local == "Internal" ? "dart" : "package";
         references.add(new DartReference(type, nameAttr.value, null));
       }
     });
