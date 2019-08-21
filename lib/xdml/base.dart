@@ -3,6 +3,9 @@ import 'package:xml/xml.dart' as xml;
 
 import 'app.dart';
 
+final FLUTTER = "https://github.com/flutter/flutter/wiki";
+final XDML = "https://github.com/miao17game/xdml/wiki/xdml";
+
 class DartReference {
   String type;
   String name;
@@ -31,7 +34,7 @@ DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
   var mains = xmlDocument.findElements("Page", namespace: "dart").toList();
   if (mains == null || mains.length == 0) {
     throw new UnsupportedError(
-        "resolve xdml $viewPath file failed => dart Page declaration not found");
+        "resolve xdml $viewPath file failed => XDML Page declaration not found");
   }
 
   var main = mains.elementAt(0);
@@ -46,7 +49,7 @@ DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
     if (refName.startsWith("xmlns:")) {
       var alias = refName.replaceAll("xmlns:", "");
       namespaces[refValue] = alias;
-      if (refValue == "dart" || refValue == "flutter") {
+      if (refValue == XDML || refValue == FLUTTER) {
         continue;
       }
       var splits = refValue.split(":");
@@ -56,18 +59,18 @@ DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
     }
   }
 
-  if (!namespaces.containsKey("dart")) {
+  if (!namespaces.containsKey(XDML)) {
     throw new UnsupportedError(
         "resolve xdml $viewPath file failed => dart namespace not found");
   }
 
-  var refNodes = main.findAllElements("Reference", namespace: "dart").toList();
+  var refNodes = main.findAllElements("Reference", namespace: XDML).toList();
   if (refNodes != null && refNodes.length > 0) {
     var refRoot = refNodes.elementAt(0);
     refRoot.children.where((e) => e is xml.XmlElement).forEach((child) {
       xml.XmlElement thisNode = child;
       var name = thisNode.name;
-      if (name.namespaceUri.trim() != "dart") return;
+      if (name.namespaceUri.trim() != XDML) return;
       var childAttrs = thisNode.attributes;
       var nameAttr = childAttrs.firstWhere((i) => i.name.toString() == "name",
           orElse: () => null);
