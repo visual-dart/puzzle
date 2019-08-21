@@ -36,15 +36,38 @@ ComponentTreeNode resolveApp(
           .toList();
   var node = new ComponentTreeNode(rootName, hasNs ? rootNs : null, attrs, [],
       isText ? appRoot.children.elementAt(0).toString() : null, null);
-  children.forEach((c) {
+  for (var c in children) {
     c.parent = node;
+    var idx = children.indexOf(c);
     var slot =
         c.attrs.firstWhere((t) => t.startsWith("slot@@@"), orElse: () => null);
     if (slot != null) {
       node.slots.add(
-          "${slot.replaceAll("slot@@@", "")}###${c.ns == null ? "__no_ns__" : c.ns}@@@${c.name}");
+          "${slot.replaceAll("slot@@@", "")}###${c.ns == null ? "__no_ns__" : c.ns}@@@${c.name}&&&$idx");
     }
-  });
+  }
   node.children = children;
   return node;
+}
+
+class PairInfo {
+  String slot;
+  String ns = null;
+  String name;
+  int index = -1;
+  PairInfo(this.slot, this.name);
+}
+
+PairInfo parsePairInfo(String pairSrr) {
+  var ss = pairSrr.split("###");
+  var sn = ss.elementAt(1).split("@@@");
+  var sm = sn.elementAt(1).split("&&&");
+  var slotName = ss.elementAt(0);
+  var compNs = sn.elementAt(0) == "__no_ns__" ? null : sn.elementAt(0);
+  var compName = sm.elementAt(0);
+  var idx = int.parse(sm.elementAt(1));
+  var pair = new PairInfo(slotName, compName);
+  if (compNs != null) pair.ns = compNs;
+  if (idx >= 0) pair.index = idx;
+  return pair;
 }

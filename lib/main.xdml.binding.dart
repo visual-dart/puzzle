@@ -3,43 +3,51 @@ part of "main.dart";
 FunctionExpressionInvocation generateTree(
     AstFactoryImpl fac, ComponentTreeNode app,
     {String subName}) {
-  var attrs = app.attrs;
+  var attrs = app.attrs.where((i) => !i.startsWith("slot@@@"));
   var children = app.children;
   var slots = app.slots;
-  List<FunctionExpressionInvocation> content = [];
+  List<NamedExpression> content = [];
+  for (var child in children) {
+    if (slots.length > 0) {
+      // var slot = slots.firstWhere((sl)=> sl.startsWith())
+      // var ss = slot.split("###");
+      // var sn = ss.elementAt(1).split("@@@");
+      // var slotName = ss.elementAt(0);
+      // var compNs = sn[0] == "__no_ns__" ? null : sn[0];
+      // var compName = sn[1];
+      // var targetChild = children.firstWhere(
+      //     (c) => c.name == compName && c.ns == compNs,
+      //     orElse: () => null);
+      // if (targetChild == null) {
+      //   throw UnsupportedError(
+      //       "generate tree node failed -> node ${app.fullname}'s slot [$slotName] not found");
+      // }
+      // content.add(fac.namedExpression(
+      //     fac.label(
+      //         fac.simpleIdentifier(
+      //             new StringToken(TokenType.STRING, slotName, 0)),
+      //         new SimpleToken(TokenType.COLON, 0)),
+      //     generateTree(fac, targetChild)));
+    }
+  }
   if (slots.length > 0) {
     for (var slot in slots) {
-      var ss = slot.split("###");
-      var sn = ss.elementAt(1).split("@@@");
-      var slotName = ss.elementAt(0);
-      var compNs = sn[0] == "__no_ns__" ? null : sn[0];
-      var compName = sn[1];
+      var result = parsePairInfo(slot);
       var targetChild = children.firstWhere(
-          (c) => c.name == compName && c.ns == compNs,
+          (c) => c.name == result.name && c.ns == result.ns,
           orElse: () => null);
       if (targetChild == null) {
         throw UnsupportedError(
-            "generate tree node failed -> node ${app.fullname}'s slot [$slotName] not found");
+            "generate tree node failed -> node ${app.fullname}'s slot [${result.slot}] not found");
       }
-      // content.add(fac.fieldFormalParameter(
-      //     null,
-      //     null,
-      //     null,
-      //     fac.typeName(
-      //         fac.simpleIdentifier(
-      //             new StringToken(TokenType.STRING, targetChild.fullname, 0)),
-      //         null),
-      //     null,
-      //     null,
-      //     fac.simpleIdentifier(new StringToken(TokenType.STRING, slotName, 0)),
-      //     null,
-      //     null));
-      content.add(generateTree(fac, targetChild));
+      content.add(fac.namedExpression(
+          fac.label(
+              fac.simpleIdentifier(
+                  new StringToken(TokenType.STRING, result.slot, 0)),
+              new SimpleToken(TokenType.COLON, 0)),
+          generateTree(fac, targetChild)));
     }
   }
-  // if(subName!= null){
-  //   return fac.parameter
-  // }
   return fac.functionExpressionInvocation(
       fac.simpleIdentifier(
           new StringToken(TokenType.IDENTIFIER, app.fullname, 0)),
