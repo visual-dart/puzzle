@@ -32,7 +32,7 @@ void main(List<String> arguments) {
   var target2 = argus.firstWhere((i) => i[0] == "group", orElse: () => null);
   var entry = target == null ? "." : target[1];
   var group = target2 == null ? "com.example" : target2[1];
-  print("provide : $entry/**.dart");
+  // print("provide : $entry/**.dart");
   final _glob = new glob.Glob("$entry/**.dart");
   var fileList = _glob.listSync();
   // print(fileList);
@@ -43,7 +43,7 @@ void main(List<String> arguments) {
         filePath: i.path, relations: relations, basedir: entry, group: group);
   }
   var watcher = watch.DirectoryWatcher(entry);
-  relations.forEach((e) => print("${e[0]}\n${e[1]}\n${e[2]}\n----------"));
+  // relations.forEach((e) => print("${e[0]}\n${e[1]}\n${e[2]}\n----------"));
   watcher.events.listen((event) {
     var changedPath = path.relative(event.path);
     print("file changed -> $changedPath");

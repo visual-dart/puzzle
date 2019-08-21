@@ -64,14 +64,14 @@ class InsertResult {
 InsertResult parseInsertExpression(String expression) {
   var valid = false;
   var reg = new RegExp("({{\r*([^}{]+)\r*}})");
-  print("input $expression --> matched:${reg.hasMatch(expression)}");
+  // print("input $expression --> matched:${reg.hasMatch(expression)}");
   var newExpression = expression.replaceAllMapped(reg, (matched) {
     if (matched is RegExpMatch) {
       if (valid == false) valid = true;
-      var insertExp = matched.group(1);
+      // var insertExp = matched.group(1);
       var insertValue = matched.group(2).trim();
-      print("expr -> [$insertExp]");
-      print("matc -> [$insertValue]");
+      // print("expr -> [$insertExp]");
+      // print("matc -> [$insertValue]");
       if (insertValue.startsWith("this.")) {
         return "_delegate." + insertValue.substring(5);
       }

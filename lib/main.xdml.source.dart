@@ -13,18 +13,18 @@ CompilationUnitMember wrapBuildMethod(CompilationUnitMember i, String className,
     Block block = buildFn.body.childEntities.toList().elementAt(0);
     var variables =
         block.statements.where((s) => s is VariableDeclarationStatement);
-    var execs = block.statements.where((s) => s is ExpressionStatement);
-    execs.forEach((exec) {
-      ExpressionStatement x = exec;
-      x.childEntities.forEach((ch) {
-        print(ch.runtimeType);
-        if (ch is MethodInvocation) {
-          ch.argumentList.arguments.toList().forEach((ls) {
-            print(ls.runtimeType);
-          });
-        }
-      });
-    });
+    // var execs = block.statements.where((s) => s is ExpressionStatement);
+    // execs.forEach((exec) {
+    //   ExpressionStatement x = exec;
+    //   x.childEntities.forEach((ch) {
+    //     print(ch.runtimeType);
+    //     if (ch is MethodInvocation) {
+    //       ch.argumentList.arguments.toList().forEach((ls) {
+    //         print(ls.runtimeType);
+    //       });
+    //     }
+    //   });
+    // });
     var returns = block.statements.where((s) => s is ReturnStatement);
     if (returns.length == 0) {
       throw new UnsupportedError(

@@ -22,7 +22,7 @@ ComponentTreeNode resolveApp(
   var rootName = appRoot.name.local;
   var hasNs = namespaces.containsKey(appRoot.name.namespaceUri);
   var rootNs = namespaces[appRoot.name.namespaceUri];
-  print("${hasNs ? "$rootNs:" : ""}$rootName");
+  // print("${hasNs ? "$rootNs:" : ""}$rootName");
   appRoot.normalize();
   var attrs = appRoot.attributes
       .map((attr) => "${attr.name.toString()}@@@${attr.value}")
