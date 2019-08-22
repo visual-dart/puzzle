@@ -1,57 +1,42 @@
 import 'dart:core';
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/src/dart/ast/ast_factory.dart';
+import 'package:analyzer/dart/ast/ast_factory.dart';
 import 'package:analyzer/src/dart/ast/token.dart';
 import 'package:front_end/src/scanner/token.dart';
 
 import 'app.dart';
 
-FunctionExpressionInvocation generateTree(
-    AstFactoryImpl fac, ComponentTreeNode app,
+Expression generateTree(AstFactory fac, ComponentTreeNode app,
     {String subName}) {
+  var internal = app.internal;
   var attrs = app.attrs.where((i) => !i.startsWith("slot@@@"));
   var children = app.children;
   var slots = app.slots;
   var text = app.innerText;
   List<Expression> content = [];
+
   if (text != null) {
-    var insert = parseInsertExpression(text);
-    content.add(fac
-        .simpleIdentifier(new StringToken(TokenType.STRING, insert.value, 0)));
+    insertTextNode(fac, internal, content, text);
   } else {
-    for (var attr in attrs) {
-      var nss = attr.split("@@@");
-      var insert = parseInsertExpression(nss.elementAt(1));
-      content.add(fac.namedExpression(
-          fac.label(
-              fac.simpleIdentifier(
-                  new StringToken(TokenType.STRING, nss.elementAt(0), 0)),
-              new SimpleToken(TokenType.COLON, 0)),
-          fac.simpleIdentifier(
-              new StringToken(TokenType.STRING, insert.value, 0))));
-    }
-    for (var child in children) {
-      var childIdx = children.indexOf(child);
-      if (slots.length > 0) {
-        var slot = slots.firstWhere((sl) => sl.endsWith("&&&$childIdx"),
-            orElse: () => null);
-        // 没找到当前位置的slot，为普通child，暂时不处理
-        if (slot == null) continue;
-        var result = parsePairInfo(slot);
-        var targetChild = children.firstWhere(
-            (c) => c.name == result.name && c.ns == result.ns,
-            orElse: () => null);
-        if (targetChild == null) {
-          throw UnsupportedError(
-              "generate tree node failed -> node ${app.fullname}'s slot [${result.slot}] not found");
-        }
-        content.add(fac.namedExpression(
-            fac.label(
-                fac.simpleIdentifier(
-                    new StringToken(TokenType.STRING, result.slot, 0)),
-                new SimpleToken(TokenType.COLON, 0)),
-            generateTree(fac, targetChild)));
-      }
+    insertCommonNode(fac, internal, content, attrs, children, slots, app);
+  }
+  if (internal) {
+    if (app.name == "NodeList") {
+      var type =
+          attrs.firstWhere((i) => i.startsWith("type@@@"), orElse: () => null);
+      var typeMeta = type?.split("@@@")?.elementAt(1);
+      var typeList = typeMeta != null
+          ? fac.typeArgumentList(
+              null,
+              [
+                fac.typeName(
+                    fac.simpleIdentifier(
+                        new StringToken(TokenType.STRING, typeMeta, 0)),
+                    null)
+              ],
+              null)
+          : null;
+      return fac.listLiteral(null, typeList, null, content, null);
     }
   }
   return fac.functionExpressionInvocation(
@@ -59,6 +44,75 @@ FunctionExpressionInvocation generateTree(
           new StringToken(TokenType.IDENTIFIER, app.fullname, 0)),
       null,
       fac.argumentList(null, content, null));
+}
+
+void insertCommonNode(
+    AstFactory fac,
+    bool internal,
+    List<Expression> content,
+    Iterable<String> attrs,
+    List<ComponentTreeNode> children,
+    List<String> slots,
+    ComponentTreeNode app) {
+  if (!internal) {
+    for (var attr in attrs) {
+      var nss = attr.split("@@@");
+      var insert = parseInsertExpression(nss.elementAt(1));
+      content.add(createNamedParamByAttr(fac, nss.elementAt(0), insert));
+    }
+  }
+  List<Expression> slotNodes = [];
+  List<Expression> queueNodes = [];
+  for (var child in children) {
+    var childIdx = children.indexOf(child);
+    var slot = slots.firstWhere((sl) => sl.endsWith("&&&$childIdx"),
+        orElse: () => null);
+    if (slot != null && !internal) {
+      var result = parsePairInfo(slot);
+      var targetChild = children.firstWhere(
+          (c) => c.name == result.name && c.ns == result.ns,
+          orElse: () => null);
+      if (targetChild == null) {
+        throw UnsupportedError(
+            "generate tree node failed -> node ${app.fullname}'s slot [${result.slot}] not found");
+      }
+      slotNodes.add(createNamedParamByChildNode(fac, result.slot, targetChild));
+    } else {
+      queueNodes.add(createNormalParamByChildNode(fac, attrs, child));
+    }
+  }
+  content.addAll(queueNodes);
+  content.addAll(slotNodes);
+}
+
+void insertTextNode(
+    AstFactory fac, bool internal, List<Expression> content, String text) {
+  var insert = parseInsertExpression(text);
+  content.add(
+      fac.simpleIdentifier(new StringToken(TokenType.STRING, insert.value, 0)));
+}
+
+Expression createNormalParamByChildNode(
+    AstFactory fac, Iterable<String> attrs, ComponentTreeNode targetChild) {
+  return generateTree(fac, targetChild);
+}
+
+NamedExpression createNamedParamByChildNode(
+    AstFactory fac, String slotName, ComponentTreeNode targetChild) {
+  return fac.namedExpression(
+      fac.label(
+          fac.simpleIdentifier(new StringToken(TokenType.STRING, slotName, 0)),
+          new SimpleToken(TokenType.COLON, 0)),
+      generateTree(fac, targetChild));
+}
+
+NamedExpression createNamedParamByAttr(
+    AstFactory fac, String slotName, InsertResult insert) {
+  return fac.namedExpression(
+      fac.label(
+          fac.simpleIdentifier(new StringToken(TokenType.STRING, slotName, 0)),
+          new SimpleToken(TokenType.COLON, 0)),
+      fac.simpleIdentifier(new StringToken(TokenType.STRING, insert.value, 0)));
 }
 
 class InsertResult {
@@ -87,7 +141,7 @@ InsertResult parseInsertExpression(String expression) {
 }
 
 FunctionDeclaration generateBuildFn(
-    AstFactoryImpl fac,
+    AstFactory fac,
     List<SimpleIdentifier> invokeParams,
     String className,
     ComponentTreeNode app) {

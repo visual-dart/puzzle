@@ -65,7 +65,7 @@ DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
   }
 
   var refNodes = main.findAllElements("Reference", namespace: XDML).toList();
-  if (refNodes != null && refNodes.length > 0) {
+  if (refNodes != null && refNodes.isNotEmpty) {
     var refRoot = refNodes.elementAt(0);
     refRoot.children.where((e) => e is xml.XmlElement).forEach((child) {
       xml.XmlElement thisNode = child;

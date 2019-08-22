@@ -5,6 +5,7 @@ import 'package:xml/xml.dart' as xml;
 import 'base.dart';
 
 class ComponentTreeNode {
+  bool internal = false;
   String ns = null;
   String name;
   ComponentTreeNode parent = null;
@@ -12,8 +13,8 @@ class ComponentTreeNode {
   List<String> attrs = [];
   List<String> slots = [];
   String innerText = null;
-  ComponentTreeNode(this.name, this.ns, this.attrs, this.children,
-      this.innerText, this.parent);
+  ComponentTreeNode(this.internal, this.name, this.ns, this.attrs,
+      this.children, this.innerText, this.parent);
 
   get fullname => ns == null ? name : "${ns}:${name}";
 }
@@ -23,10 +24,16 @@ ComponentTreeNode resolveApp(
     Map<String, String> namespaces,
     List<String> libraries,
     xml.XmlElement appRoot) {
+  var internal = false;
   var rootName = appRoot.name.local;
-  var hasNs = namespaces.containsKey(appRoot.name.namespaceUri);
-  var rootNs = namespaces[appRoot.name.namespaceUri];
+  var nsUri = appRoot.name.namespaceUri;
+  var hasNs = namespaces.containsKey(nsUri);
+  var rootNs = namespaces[nsUri];
   // print("${hasNs ? "$rootNs:" : ""}$rootName");
+  // 内置节点类型
+  if (nsUri == XDML) {
+    internal = true;
+  }
   appRoot.normalize();
   var attrs = appRoot.attributes
       .map((attr) => "${attr.name.toString()}@@@${attr.value}")
@@ -38,8 +45,14 @@ ComponentTreeNode resolveApp(
           .where((n) => n is xml.XmlElement)
           .map((i) => resolveApp(references, namespaces, libraries, i))
           .toList();
-  var node = new ComponentTreeNode(rootName, hasNs ? rootNs : null, attrs, [],
-      isText ? appRoot.children.elementAt(0).toString() : null, null);
+  var node = new ComponentTreeNode(
+      internal,
+      rootName,
+      hasNs ? rootNs : null,
+      attrs,
+      [],
+      isText ? appRoot.children.elementAt(0).toString() : null,
+      null);
   for (var c in children) {
     c.parent = node;
     var idx = children.indexOf(c);

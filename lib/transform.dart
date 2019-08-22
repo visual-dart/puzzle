@@ -14,7 +14,7 @@ class BuildTransformer extends RecursiveAstVisitor<dynamic> {
 
   @override
   dynamic visitClassDeclaration(node) {
-    if (node.metadata != null && node.metadata.length > 0) {
+    if (node.metadata != null && node.metadata.isNotEmpty) {
       var decos = _readDecorator(node.metadata);
       decos.forEach((name, deco) {
         if (name != 'Binding') return;

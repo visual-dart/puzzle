@@ -173,7 +173,7 @@ LibraryIdentifier decideLibIdentify(
   var secs = group.split("/");
   secs.addAll(paths.relative.split("/"));
 
-  if (libraries.length > 0) {
+  if (libraries.isNotEmpty) {
     secs = libraries.elementAt(0).split(".");
   }
 
