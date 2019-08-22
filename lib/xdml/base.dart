@@ -5,6 +5,13 @@ import 'app.dart';
 
 final FLUTTER = "https://github.com/flutter/flutter/wiki";
 final XDML = "https://github.com/miao17game/xdml/wiki/xdml";
+final BIND = "https://github.com/miao17game/xdml/wiki/bind";
+
+bool isInternalNs(String namespaceUri) {
+  return namespaceUri == FLUTTER ||
+      namespaceUri == XDML ||
+      namespaceUri == BIND;
+}
 
 class DartReference {
   String type = null;
@@ -49,7 +56,7 @@ DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
     if (refName.startsWith("xmlns:")) {
       var alias = refName.replaceAll("xmlns:", "");
       namespaces[refValue] = alias;
-      if (refValue == XDML || refValue == FLUTTER) {
+      if (isInternalNs(refValue)) {
         continue;
       }
       var splits = refValue.split(":");

@@ -9,7 +9,7 @@ import 'app.dart';
 Expression generateTree(AstFactory fac, ComponentTreeNode app,
     {String subName}) {
   var internal = app.internal;
-  var attrs = app.attrs.where((i) => !i.startsWith("slot@@@"));
+  var attrs = app.attrs.where((i) => !isXDMLSlot(i));
   var children = app.children;
   var slots = app.slots;
 
@@ -37,10 +37,10 @@ FunctionExpressionInvocation createFunctionInvokation(
 }
 
 ListLiteral createNodeList(
-    AstFactory fac, Iterable<String> attrs, List<Expression> content) {
-  var type =
-      attrs.firstWhere((i) => i.startsWith("type@@@"), orElse: () => null);
-  var typeMeta = type?.split("@@@")?.elementAt(1);
+    AstFactory fac, Iterable<AttributeNode> attrs, List<Expression> content) {
+  var type = attrs.firstWhere((i) => i.name == "type" && i.ns == null,
+      orElse: () => null);
+  var typeMeta = type?.value;
   var typeList = typeMeta != null
       ? fac.typeArgumentList(
           null,
@@ -58,7 +58,7 @@ ListLiteral createNodeList(
 List<Expression> insertCommonNode(
     AstFactory fac,
     bool internal,
-    Iterable<String> attrs,
+    Iterable<AttributeNode> attrs,
     List<ComponentTreeNode> children,
     List<String> slots,
     ComponentTreeNode app) {
@@ -69,9 +69,10 @@ List<Expression> insertCommonNode(
   // 内部节点无视attrs属性
   if (!internal) {
     for (var attr in attrs) {
-      var nss = attr.split("@@@");
-      var insert = parseInsertExpression(nss.elementAt(1));
-      attrNodes.add(createNamedParamByAttr(fac, nss.elementAt(0), insert));
+      var insert = isInsertBind(attr)
+          ? attr.value
+          : parseInsertExpression(attr.value).value;
+      attrNodes.add(createNamedParamByAttr(fac, attr.name, insert));
     }
   }
   for (var child in children) {
@@ -109,8 +110,8 @@ List<Expression> insertTextNode(AstFactory fac, bool internal, String text) {
   return content;
 }
 
-Expression createNormalParamByChildNode(
-    AstFactory fac, Iterable<String> attrs, ComponentTreeNode targetChild) {
+Expression createNormalParamByChildNode(AstFactory fac,
+    Iterable<AttributeNode> attrs, ComponentTreeNode targetChild) {
   return generateTree(fac, targetChild);
 }
 
@@ -124,12 +125,12 @@ NamedExpression createNamedParamByChildNode(
 }
 
 NamedExpression createNamedParamByAttr(
-    AstFactory fac, String slotName, InsertResult insert) {
+    AstFactory fac, String slotName, String insert) {
   return fac.namedExpression(
       fac.label(
           fac.simpleIdentifier(new StringToken(TokenType.STRING, slotName, 0)),
           new SimpleToken(TokenType.COLON, 0)),
-      fac.simpleIdentifier(new StringToken(TokenType.STRING, insert.value, 0)));
+      fac.simpleIdentifier(new StringToken(TokenType.STRING, insert, 0)));
 }
 
 class InsertResult {

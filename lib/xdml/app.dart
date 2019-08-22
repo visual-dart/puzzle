@@ -4,16 +4,28 @@ import 'package:xml/xml.dart' as xml;
 
 import 'base.dart';
 
+class AttributeNode {
+  bool internal = false;
+  String ns = null;
+  String nsUri = null;
+  String name;
+  String value;
+  AttributeNode(this.internal, this.name, this.ns, this.nsUri, this.value);
+
+  get fullname => ns == null ? name : "${ns}:${name}";
+}
+
 class ComponentTreeNode {
   bool internal = false;
   String ns = null;
+  String nsUri = null;
   String name;
   ComponentTreeNode parent = null;
   List<ComponentTreeNode> children = [];
-  List<String> attrs = [];
+  List<AttributeNode> attrs = [];
   List<String> slots = [];
   String innerText = null;
-  ComponentTreeNode(this.internal, this.name, this.ns, this.attrs,
+  ComponentTreeNode(this.internal, this.name, this.ns, this.nsUri, this.attrs,
       this.children, this.innerText, this.parent);
 
   get fullname => ns == null ? name : "${ns}:${name}";
@@ -36,7 +48,7 @@ ComponentTreeNode resolveApp(
   }
   appRoot.normalize();
   var attrs = appRoot.attributes
-      .map((attr) => "${attr.name.toString()}@@@${attr.value}")
+      .map((attr) => createAttribute(attr, namespaces))
       .toList();
   var isText = rootName == "Text" && !hasNs;
   List<ComponentTreeNode> children = isText
@@ -49,6 +61,7 @@ ComponentTreeNode resolveApp(
       internal,
       rootName,
       hasNs ? rootNs : null,
+      hasNs ? nsUri : null,
       attrs,
       [],
       isText ? appRoot.children.elementAt(0).toString() : null,
@@ -56,15 +69,35 @@ ComponentTreeNode resolveApp(
   for (var c in children) {
     c.parent = node;
     var idx = children.indexOf(c);
-    var slot =
-        c.attrs.firstWhere((t) => t.startsWith("slot@@@"), orElse: () => null);
+    var slot = c.attrs.firstWhere((t) => isXDMLSlot(t), orElse: () => null);
     if (slot != null) {
       node.slots.add(
-          "${slot.replaceAll("slot@@@", "")}###${c.ns == null ? "__no_ns__" : c.ns}@@@${c.name}&&&$idx");
+          "${slot.value}###${c.ns == null ? "__no_ns__" : c.ns}@@@${c.name}&&&$idx");
     }
   }
   node.children = children;
   return node;
+}
+
+AttributeNode createAttribute(
+    xml.XmlAttribute attr, Map<String, String> namespaces) {
+  var attrName = attr.name.local;
+  var attrNsUri = attr.name.namespaceUri;
+  var hasAttrNs = namespaces.containsKey(attrNsUri);
+  return new AttributeNode(
+      attrNsUri == XDML || attrNsUri == BIND,
+      attrName,
+      hasAttrNs ? namespaces[attrNsUri] : null,
+      hasAttrNs ? attrNsUri : null,
+      attr.value);
+}
+
+bool isXDMLSlot(AttributeNode t) {
+  return t.name == "slot" && t.nsUri == XDML;
+}
+
+bool isInsertBind(AttributeNode t) {
+  return t.nsUri == BIND;
 }
 
 class PairInfo {
