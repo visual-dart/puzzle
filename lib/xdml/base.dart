@@ -28,7 +28,6 @@ class DartReference {
 }
 
 class DocumentParesResult {
-  List<String> libraries = [];
   List<DartReference> references = [];
   Map<String, String> namespaces = {};
   ComponentTreeNode app = null;
@@ -77,19 +76,20 @@ DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
     refRoot.children.where((e) => e is xml.XmlElement).forEach((child) {
       xml.XmlElement thisNode = child;
       var name = thisNode.name;
-      if (name.namespaceUri.trim() != XDML) return;
-      var childAttrs = thisNode.attributes;
-      var nameAttr = childAttrs.firstWhere((i) => i.name.toString() == "name",
-          orElse: () => null);
-      if (nameAttr != null) {
-        if (name.local == "Library") {
-          libraries.add(nameAttr.value);
-          return;
+      if (name.namespaceUri != XDML) return;
+      if (name.local == "Import") {
+        var childAttrs = thisNode.attributes;
+        var pathUri = childAttrs.firstWhere((i) => i.name.toString() == "path",
+            orElse: () => null);
+        if (pathUri != null) {
+          var secs = pathUri.value.split(":");
+          if (secs.length > 1) {
+            references.add(
+                new DartReference(secs.elementAt(0), secs.elementAt(1), null));
+          } else {
+            references.add(new DartReference(null, secs.elementAt(0), null));
+          }
         }
-        var type = name.local == "Relative"
-            ? null
-            : name.local == "Internal" ? "dart" : "package";
-        references.add(new DartReference(type, nameAttr.value, null));
       }
     });
   }
@@ -105,10 +105,9 @@ DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
         "resolve xdml $viewPath file failed => app root not found");
   }
 
-  var app = resolveApp(references, namespaces, libraries, appRoot);
+  var app = resolveApp(references, namespaces, appRoot);
 
   var result = new DocumentParesResult();
-  result.libraries = libraries;
   result.namespaces = namespaces;
   result.references = references;
   result.app = app;

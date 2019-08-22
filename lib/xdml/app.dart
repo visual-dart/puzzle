@@ -31,11 +31,8 @@ class ComponentTreeNode {
   get fullname => ns == null ? name : "${ns}:${name}";
 }
 
-ComponentTreeNode resolveApp(
-    List<DartReference> references,
-    Map<String, String> namespaces,
-    List<String> libraries,
-    xml.XmlElement appRoot) {
+ComponentTreeNode resolveApp(List<DartReference> references,
+    Map<String, String> namespaces, xml.XmlElement appRoot) {
   var internal = false;
   var rootName = appRoot.name.local;
   var nsUri = appRoot.name.namespaceUri;
@@ -55,7 +52,7 @@ ComponentTreeNode resolveApp(
       ? []
       : appRoot.children
           .where((n) => n is xml.XmlElement)
-          .map((i) => resolveApp(references, namespaces, libraries, i))
+          .map((i) => resolveApp(references, namespaces, i))
           .toList();
   var node = new ComponentTreeNode(
       internal,
