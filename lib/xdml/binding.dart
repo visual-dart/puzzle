@@ -178,24 +178,15 @@ FunctionDeclaration generateBuildFn(
             null,
             invokeParams.map((i) {
               var paramName = i.name;
-              // var isThis = paramName == "this";
               var isContext = paramName == "context";
-              var typeName =
-                  /* isThis ? className :*/ isContext
-                      ? "BuildContext"
-                      : "dynamic";
-              var param = fac.simpleFormalParameter(
-                  null,
-                  null,
-                  null,
-                  fac.typeName(
+              var typeName = isContext ? "BuildContext" : "dynamic";
+              var param = fac.simpleFormalParameter2(
+                  type: fac.typeName(
                       fac.simpleIdentifier(
                           new StringToken(TokenType.STRING, typeName, 0)),
                       null),
-                  fac.simpleIdentifier(new StringToken(
-                      TokenType.STRING,
-                      /*isThis ? "_delegate" :*/ paramName,
-                      0)));
+                  identifier: fac.simpleIdentifier(
+                      new StringToken(TokenType.STRING, paramName, 0)));
               return param;
             }).toList(),
             null,
