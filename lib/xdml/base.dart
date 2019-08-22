@@ -45,7 +45,6 @@ DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
 
   var main = mains.elementAt(0);
   var attrs = main.attributes.toList();
-  List<String> libraries = [];
   List<DartReference> references = [];
   Map<String, String> namespaces = {};
 
