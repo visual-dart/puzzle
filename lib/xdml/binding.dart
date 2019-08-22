@@ -20,30 +20,42 @@ Expression generateTree(AstFactory fac, ComponentTreeNode app,
   } else {
     insertCommonNode(fac, internal, content, attrs, children, slots, app);
   }
-  if (internal) {
-    if (app.name == "NodeList") {
-      var type =
-          attrs.firstWhere((i) => i.startsWith("type@@@"), orElse: () => null);
-      var typeMeta = type?.split("@@@")?.elementAt(1);
-      var typeList = typeMeta != null
-          ? fac.typeArgumentList(
-              null,
-              [
-                fac.typeName(
-                    fac.simpleIdentifier(
-                        new StringToken(TokenType.STRING, typeMeta, 0)),
-                    null)
-              ],
-              null)
-          : null;
-      return fac.listLiteral(null, typeList, null, content, null);
-    }
+  if (!internal) {
+    return createFunctionInvokation(fac, app, content);
   }
+  if (app.name == "NodeList") {
+    return createNodeList(fac, attrs, content);
+  }
+  throw UnsupportedError(
+      "parse tree node failed -> unsupport node ${app.fullname}");
+}
+
+FunctionExpressionInvocation createFunctionInvokation(
+    AstFactory fac, ComponentTreeNode app, List<Expression> content) {
   return fac.functionExpressionInvocation(
       fac.simpleIdentifier(
           new StringToken(TokenType.IDENTIFIER, app.fullname, 0)),
       null,
       fac.argumentList(null, content, null));
+}
+
+ListLiteral createNodeList(
+    AstFactory fac, Iterable<String> attrs, List<Expression> content) {
+  var type =
+      attrs.firstWhere((i) => i.startsWith("type@@@"), orElse: () => null);
+  var typeMeta = type?.split("@@@")?.elementAt(1);
+  var typeList = typeMeta != null
+      ? fac.typeArgumentList(
+          null,
+          [
+            fac.typeName(
+                fac.simpleIdentifier(
+                    new StringToken(TokenType.STRING, typeMeta, 0)),
+                null)
+          ],
+          null)
+      : null;
+  return fac.listLiteral(null, typeList, null, content, null);
 }
 
 void insertCommonNode(
@@ -54,15 +66,18 @@ void insertCommonNode(
     List<ComponentTreeNode> children,
     List<String> slots,
     ComponentTreeNode app) {
+  List<Expression> attrNodes = [];
+  List<Expression> slotNodes = [];
+  List<Expression> queueNodes = [];
+
+  // 内部节点无视attrs属性
   if (!internal) {
     for (var attr in attrs) {
       var nss = attr.split("@@@");
       var insert = parseInsertExpression(nss.elementAt(1));
-      content.add(createNamedParamByAttr(fac, nss.elementAt(0), insert));
+      attrNodes.add(createNamedParamByAttr(fac, nss.elementAt(0), insert));
     }
   }
-  List<Expression> slotNodes = [];
-  List<Expression> queueNodes = [];
   for (var child in children) {
     var childIdx = children.indexOf(child);
     var slot = slots.firstWhere((sl) => sl.endsWith("&&&$childIdx"),
@@ -81,6 +96,8 @@ void insertCommonNode(
       queueNodes.add(createNormalParamByChildNode(fac, attrs, child));
     }
   }
+  // 节点优先级，slot节点靠后
+  content.addAll(attrNodes);
   content.addAll(queueNodes);
   content.addAll(slotNodes);
 }
