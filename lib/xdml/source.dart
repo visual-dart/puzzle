@@ -30,7 +30,7 @@ CompilationUnitMember wrapBuildMethod(CompilationUnitMember i, String className,
     //   });
     // });
     var returns = block.statements.where((s) => s is ReturnStatement);
-    if (returns.length == 0) {
+    if (returns.isEmpty) {
       throw new UnsupportedError(
           "resolve widget $className's build method failed => method no return is invalid");
     }
