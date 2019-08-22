@@ -60,7 +60,7 @@ List<Expression> insertCommonNode(
     bool internal,
     Iterable<AttributeNode> attrs,
     List<ComponentTreeNode> children,
-    List<String> slots,
+    List<SlotNode> slots,
     ComponentTreeNode app) {
   List<Expression> attrNodes = [];
   List<Expression> slotNodes = [];
@@ -77,18 +77,18 @@ List<Expression> insertCommonNode(
   }
   for (var child in children) {
     var childIdx = children.indexOf(child);
-    var slot = slots.firstWhere((sl) => sl.endsWith("&&&$childIdx"),
-        orElse: () => null);
-    if (slot != null && !internal) {
-      var result = parsePairInfo(slot);
+    var result =
+        slots.firstWhere((sl) => sl.index == childIdx, orElse: () => null);
+    if (result != null && !internal) {
       var targetChild = children.firstWhere(
-          (c) => c.name == result.name && c.ns == result.ns,
+          (c) => c.name == result.value && c.ns == result.ns,
           orElse: () => null);
       if (targetChild == null) {
         throw UnsupportedError(
-            "generate tree node failed -> node ${app.fullname}'s slot [${result.slot}] not found");
+            "generate tree node failed -> node ${app.fullname}'s slot [${result.target}] not found");
       }
-      slotNodes.add(createNamedParamByChildNode(fac, result.slot, targetChild));
+      slotNodes
+          .add(createNamedParamByChildNode(fac, result.target, targetChild));
     } else {
       queueNodes.add(createNormalParamByChildNode(fac, attrs, child));
     }

@@ -15,6 +15,15 @@ class AttributeNode {
   get fullname => ns == null ? name : "${ns}:${name}";
 }
 
+class SlotNode {
+  String ns = null;
+  String nsUri = null;
+  String target;
+  String value;
+  int index;
+  SlotNode(this.ns, this.nsUri, this.target, this.value, this.index);
+}
+
 class ComponentTreeNode {
   bool internal = false;
   String ns = null;
@@ -23,7 +32,7 @@ class ComponentTreeNode {
   ComponentTreeNode parent = null;
   List<ComponentTreeNode> children = [];
   List<AttributeNode> attrs = [];
-  List<String> slots = [];
+  List<SlotNode> slots = [];
   String innerText = null;
   ComponentTreeNode(this.internal, this.name, this.ns, this.nsUri, this.attrs,
       this.children, this.innerText, this.parent);
@@ -68,8 +77,7 @@ ComponentTreeNode resolveApp(List<DartReference> references,
     var idx = children.indexOf(c);
     var slot = c.attrs.firstWhere((t) => isXDMLSlot(t), orElse: () => null);
     if (slot != null) {
-      node.slots.add(
-          "${slot.value}###${c.ns == null ? "__no_ns__" : c.ns}@@@${c.name}&&&$idx");
+      node.slots.add(new SlotNode(c.ns, c.nsUri, slot.value, c.name, idx));
     }
   }
   node.children = children;
@@ -95,26 +103,4 @@ bool isXDMLSlot(AttributeNode t) {
 
 bool isInsertBind(AttributeNode t) {
   return t.nsUri == BIND;
-}
-
-class PairInfo {
-  String slot;
-  String ns = null;
-  String name;
-  int index = -1;
-  PairInfo(this.slot, this.name);
-}
-
-PairInfo parsePairInfo(String pairSrr) {
-  var ss = pairSrr.split("###");
-  var sn = ss.elementAt(1).split("@@@");
-  var sm = sn.elementAt(1).split("&&&");
-  var slotName = ss.elementAt(0);
-  var compNs = sn.elementAt(0) == "__no_ns__" ? null : sn.elementAt(0);
-  var compName = sm.elementAt(0);
-  var idx = int.parse(sm.elementAt(1));
-  var pair = new PairInfo(slotName, compName);
-  if (compNs != null) pair.ns = compNs;
-  if (idx >= 0) pair.index = idx;
-  return pair;
 }
