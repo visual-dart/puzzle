@@ -12,14 +12,11 @@ Expression generateTree(AstFactory fac, ComponentTreeNode app,
   var attrs = app.attrs.where((i) => !i.startsWith("slot@@@"));
   var children = app.children;
   var slots = app.slots;
-  var text = app.innerText;
-  List<Expression> content = [];
 
-  if (text != null) {
-    insertTextNode(fac, internal, content, text);
-  } else {
-    insertCommonNode(fac, internal, content, attrs, children, slots, app);
-  }
+  List<Expression> content = app.innerText != null
+      ? insertTextNode(fac, internal, app.innerText)
+      : insertCommonNode(fac, internal, attrs, children, slots, app);
+
   if (!internal) {
     return createFunctionInvokation(fac, app, content);
   }
@@ -58,10 +55,9 @@ ListLiteral createNodeList(
   return fac.listLiteral(null, typeList, null, content, null);
 }
 
-void insertCommonNode(
+List<Expression> insertCommonNode(
     AstFactory fac,
     bool internal,
-    List<Expression> content,
     Iterable<String> attrs,
     List<ComponentTreeNode> children,
     List<String> slots,
@@ -96,17 +92,21 @@ void insertCommonNode(
       queueNodes.add(createNormalParamByChildNode(fac, attrs, child));
     }
   }
+
+  List<Expression> content = [];
   // 节点优先级，slot节点靠后
   content.addAll(attrNodes);
   content.addAll(queueNodes);
   content.addAll(slotNodes);
+  return content;
 }
 
-void insertTextNode(
-    AstFactory fac, bool internal, List<Expression> content, String text) {
+List<Expression> insertTextNode(AstFactory fac, bool internal, String text) {
+  List<Expression> content = [];
   var insert = parseInsertExpression(text);
   content.add(
       fac.simpleIdentifier(new StringToken(TokenType.STRING, insert.value, 0)));
+  return content;
 }
 
 Expression createNormalParamByChildNode(
