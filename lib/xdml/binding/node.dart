@@ -10,9 +10,14 @@ import 'base.dart';
 ListLiteral createNodeList(
     AstFactory fac, List<AttributeNode> attrs, List<dynamic> content) {
   // fix type mismatch
-  List<Expression> list = [];
+  List<CollectionElement> list = [];
   for (var item in content) {
-    if (item is Expression) list.add(item);
+    if (item is CollectionElement) {
+      list.add(item);
+    } else {
+      print(
+          "warning : [${item.runtimeType}] element is drop -> ${item.toString()}");
+    }
   }
   var type = attrs.firstWhere((i) => i.name == "type" && i.ns == null,
       orElse: () => null);
@@ -36,7 +41,12 @@ FunctionExpressionInvocation createFunctionInvokation(
   // fix type mismatch
   List<Expression> list = [];
   for (var item in content) {
-    if (item is Expression) list.add(item);
+    if (item is Expression) {
+      list.add(item);
+    } else {
+      print(
+          "warning : [${item.runtimeType}] element is drop -> ${item.toString()}");
+    }
   }
   return fac.functionExpressionInvocation(
       fac.simpleIdentifier(
