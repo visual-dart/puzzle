@@ -104,3 +104,11 @@ bool isXDMLSlot(AttributeNode t) {
 bool isInsertBind(AttributeNode t) {
   return t.nsUri == BIND;
 }
+
+bool isStatementIf(AttributeNode t) {
+  return t.nsUri == XDML && t.name == "if";
+}
+
+bool isStatementElse(AttributeNode t) {
+  return t.nsUri == XDML && t.name == "else";
+}

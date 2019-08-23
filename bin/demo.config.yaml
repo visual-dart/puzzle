@@ -1,3 +1,4 @@
 entry: ../../../../GIT/fe-assets/assets-flutter/example
 group: com.example.demo
 watch: true
+throwOnError: true

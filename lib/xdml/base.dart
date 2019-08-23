@@ -106,10 +106,10 @@ DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
 
   var app = resolveApp(references, namespaces, appRoot);
 
-  var result = new DocumentParesResult();
-  result.namespaces = namespaces;
-  result.references = references;
-  result.app = app;
+  var result = new DocumentParesResult()
+    ..namespaces = namespaces
+    ..references = references
+    ..app = app;
 
   return result;
 }

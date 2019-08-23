@@ -18,13 +18,18 @@ void main(List<String> arguments) {
       argus.firstWhere((i) => i[0] == "group", orElse: () => null);
   var target_watch =
       argus.firstWhere((i) => i[0] == "watch", orElse: () => null);
+  var target_throwOnError =
+      argus.firstWhere((i) => i[0] == "throwOnError", orElse: () => null);
 
   var default_conf = tryLoadConfigFile(argus);
 
   return parse(new Configuration(
       target_entry == null ? default_conf.entry : target_entry[1],
       target_group == null ? default_conf.group : target_group[1],
-      target_watch == null ? default_conf.watch : target_watch[1] == "true"));
+      target_watch == null ? default_conf.watch : target_watch[1] == "true",
+      target_throwOnError == null
+          ? default_conf.throwOnError
+          : target_throwOnError[1] == "true"));
 }
 
 Configuration tryLoadConfigFile(List<List<String>> argus) {
@@ -47,6 +52,9 @@ Configuration tryLoadConfigFile(List<List<String>> argus) {
         }
         if (doc.containsKey('watch')) {
           default_conf.watch = doc['watch'];
+        }
+        if (doc.containsKey('throwOnError')) {
+          default_conf.throwOnError = doc['throwOnError'];
         }
       }
     }

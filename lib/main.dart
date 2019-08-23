@@ -21,7 +21,8 @@ void parse(Configuration config) {
         filePath: i.path,
         relations: relations,
         basedir: config.entry,
-        group: config.group);
+        group: config.group,
+        throwOnError: config.throwOnError);
   }
   if (!config.watch) return;
   var _watcher = watcher.DirectoryWatcher(config.entry);
@@ -56,7 +57,8 @@ void parseLib(
     {String filePath,
     String group,
     String basedir,
-    List<List<String>> relations}) {
+    List<List<String>> relations,
+    bool throwOnError = false}) {
   var file =
       parseFile(path: filePath, featureSet: FeatureSet.fromEnableFlags([]));
   // print(DateTime.now().toIso8601String());
@@ -69,7 +71,8 @@ void parseLib(
         group: group,
         sourcePath: filePath,
         viewPath: viewPath,
-        sourceFile: sourceFile);
+        sourceFile: sourceFile,
+        throwOnError: throwOnError);
     // print(DateTime.now().toIso8601String());
     if (result == null) {
       return;

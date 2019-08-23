@@ -7,11 +7,12 @@ class Configuration {
   String entry;
   String group;
   bool watch;
-  Configuration(this.entry, this.group, this.watch);
+  bool throwOnError;
+  Configuration(this.entry, this.group, this.watch, this.throwOnError);
 
   Configuration fork() {
-    return Configuration(entry, group, watch);
+    return Configuration(entry, group, watch, throwOnError);
   }
 }
 
-final DEFAULT_CONFIG = new Configuration(".", "com.example", false);
+final DEFAULT_CONFIG = new Configuration(".", "com.example", false, false);

@@ -9,9 +9,9 @@ import 'package:front_end/src/scanner/token.dart';
 import 'package:dart_style/dart_style.dart' as dartfmt;
 
 import 'base.dart';
-import 'binding.dart';
 import 'paths.dart';
 import 'source.dart';
+import 'binding/index.dart';
 
 class BindingRelation {
   String source;
@@ -26,7 +26,8 @@ BindingRelation createXdmlBinding(
     String sourcePath,
     String viewPath,
     String className,
-    CompilationUnit sourceFile}) {
+    CompilationUnit sourceFile,
+    bool throwOnError = false}) {
   try {
     var paths = readPaths(basedir, sourcePath, viewPath);
 
@@ -82,10 +83,14 @@ BindingRelation createXdmlBinding(
 
     return new BindingRelation(sourcePath, paths.xdmlPath, paths.realView);
   } catch (error) {
-    if (error is FileSystemException) {
-      print(error.toString());
+    if (throwOnError == true) {
+      rethrow;
     } else {
-      print(error);
+      if (error is FileSystemException) {
+        print(error.toString());
+      } else {
+        print(error);
+      }
     }
     return null;
   }
