@@ -7,11 +7,15 @@ import 'package:analyzer/src/dart/ast/token.dart';
 import 'package:front_end/src/scanner/token.dart';
 
 import 'package:dart_style/dart_style.dart' as dartfmt;
+import 'package:ansicolor/ansicolor.dart' as color;
 
 import 'base.dart';
 import 'paths.dart';
 import 'source.dart';
 import 'binding/index.dart';
+
+final YELLOW = color.AnsiPen()..yellow();
+final RED = color.AnsiPen()..red();
 
 class BindingRelation {
   String source;
@@ -72,24 +76,25 @@ BindingRelation createXdmlBinding(
             }))
         .toList();
 
+    var buildFn = generateBuildFn(fac, invokeParams, className, result.app);
+
+    refreshBindingFile(paths, formatter, importsBindingAdd, buildFn);
+
     var newSourceFile =
         updateSpurceFile(fac, sourceFile, newDirectives, newDeclarations);
 
     refreshSourceFile(sourcePath, formatter, newSourceFile);
 
-    var buildFn = generateBuildFn(fac, invokeParams, className, result.app);
-
-    refreshBindingFile(paths, formatter, importsBindingAdd, buildFn);
-
     return new BindingRelation(sourcePath, paths.xdmlPath, paths.realView);
   } catch (error) {
     if (throwOnError == true) {
+      print(YELLOW("unhandled global error throws."));
       rethrow;
     } else {
       if (error is FileSystemException) {
-        print(error.toString());
+        print(RED(error.toString()));
       } else {
-        print(error);
+        print(RED(error));
       }
     }
     return null;
@@ -109,7 +114,6 @@ void refreshBindingFile(Paths paths, dartfmt.DartFormatter formatter,
   try {
     oldBinding = bindingFile.readAsStringSync();
   } catch (error) {
-    print(error);
     oldBinding = "";
   }
   if (oldBinding != newBinding) {
@@ -141,19 +145,6 @@ CompilationUnit updateSpurceFile(
       featureSet: sourceFile.featureSet);
 }
 
-PartOfDirective createPartOf(
-    AstFactory fac, Paths paths, LibraryIdentifier libIdentify) {
-  return fac.partOfDirective(
-      null,
-      null,
-      new KeywordToken(Keyword.PART, 0),
-      new KeywordToken(Keyword.OF, 0),
-      fac.simpleStringLiteral(
-          new StringToken(TokenType.STRING, "'${paths.sourceName}'", 0), ''),
-      libIdentify,
-      null);
-}
-
 void decideXdmlImportDirectives(
     Paths paths, AstFactory fac, List<Directive> newDirectives) {
   var importDire = fac.importDirective(
@@ -171,22 +162,6 @@ void decideXdmlImportDirectives(
   newDirectives.removeWhere((i) =>
       (i as ImportDirective).uri.toString() == importDire.uri.toString());
   newDirectives.add(importDire);
-}
-
-LibraryIdentifier decideLibIdentify(
-    String group, Paths paths, List<String> libraries, AstFactory fac) {
-  var secs = group.split("/");
-  secs.addAll(paths.relative.split("/"));
-
-  if (libraries.isNotEmpty) {
-    secs = libraries.elementAt(0).split(".");
-  }
-
-  var libIdentify = fac.libraryIdentifier(secs
-      .map((s) =>
-          fac.simpleIdentifier(new StringToken(TokenType.IDENTIFIER, s, 0)))
-      .toList());
-  return libIdentify;
 }
 
 void decideImportDirectives(
