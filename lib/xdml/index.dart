@@ -12,7 +12,7 @@ import 'package:ansicolor/ansicolor.dart' as color;
 import 'base.dart';
 import 'paths.dart';
 import 'source.dart';
-import 'binding/index.dart';
+import 'binding.dart';
 
 final YELLOW = color.AnsiPen()..yellow();
 final RED = color.AnsiPen()..red();
@@ -76,7 +76,9 @@ BindingRelation createXdmlBinding(
             }))
         .toList();
 
-    var buildFn = generateBuildFn(fac, invokeParams, className, result.app);
+    var buildFn =
+        new XDMLNodeFactory(result.app, className, invokeParams: invokeParams)
+            .generate();
 
     refreshBindingFile(paths, formatter, importsBindingAdd, buildFn);
 
