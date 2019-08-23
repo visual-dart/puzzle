@@ -38,7 +38,7 @@ BindingRelation createXdmlBinding(
     var result = parseXmlDocument(paths.xdmlPath, viewPath);
     var references = result.references;
     var namespaces = result.namespaces;
-    // var libraries = result.libraries;
+    var application = result.app;
 
     List<Directive> otherDirecs = [];
     List<Directive> imports = [];
@@ -77,7 +77,7 @@ BindingRelation createXdmlBinding(
         .toList();
 
     var buildFn =
-        new XDMLNodeFactory(result.app, className, invokeParams: invokeParams)
+        new XDMLNodeFactory(application, className, invokeParams: invokeParams)
             .generate();
 
     refreshBindingFile(paths, formatter, importsBindingAdd, buildFn);

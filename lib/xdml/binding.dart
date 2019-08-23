@@ -41,6 +41,7 @@ class XDMLNodeFactory {
   ComponentTreeNode app;
   String className;
   List<SimpleIdentifier> invokeParams = [];
+
   XDMLNodeFactory(this.app, this.className, {this.invokeParams});
 
   FunctionDeclaration generate() {
