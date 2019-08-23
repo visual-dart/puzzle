@@ -12,7 +12,11 @@ class AttributeNode {
   String value;
   AttributeNode(this.internal, this.name, this.ns, this.nsUri, this.value);
 
-  get fullname => ns == null ? name : "${ns}:${name}";
+  String get fullname => ns == null ? name : "${ns}:${name}";
+
+  AttributeNode fork() {
+    return new AttributeNode(internal, name, ns, nsUri, value);
+  }
 }
 
 class SlotNode {
@@ -22,6 +26,10 @@ class SlotNode {
   String value;
   int index;
   SlotNode(this.ns, this.nsUri, this.target, this.value, this.index);
+
+  SlotNode fork() {
+    return new SlotNode(ns, nsUri, target, value, index);
+  }
 }
 
 class ComponentTreeNode {
@@ -37,7 +45,15 @@ class ComponentTreeNode {
   ComponentTreeNode(this.internal, this.name, this.ns, this.nsUri, this.attrs,
       this.children, this.innerText, this.parent);
 
-  get fullname => ns == null ? name : "${ns}:${name}";
+  String get fullname => ns == null ? name : "${ns}:${name}";
+
+  ComponentTreeNode fork() {
+    return new ComponentTreeNode(
+        internal, name, ns, nsUri, [], [], innerText, parent?.fork())
+      ..attrs = attrs.map((a) => a.fork()).toList()
+      ..slots = slots.map((a) => a.fork()).toList()
+      ..children = children.map((a) => a.fork()).toList();
+  }
 }
 
 ComponentTreeNode resolveApp(List<DartReference> references,

@@ -26,6 +26,9 @@ Expression generateTree(AstFactory fac, ComponentTreeNode app,
   if (app.name == "NodeList") {
     return createNodeList(fac, attrs, content);
   }
+  if (app.name == "EscapeText") {
+    return createEscapeText(fac, app.innerText);
+  }
   throw UnsupportedError(
       "parse tree node failed -> unsupport node ${app.fullname}");
 }

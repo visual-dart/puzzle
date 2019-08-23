@@ -9,6 +9,8 @@ class TempPayload {
   bool isIfStatement = false;
   bool isIfElement = false;
   TempPayload(this.node, this.slot, this.childIndex);
+
+  bool get isSelf => this.isIf && this.isElse;
 }
 
 enum TurnType { statement, element, node }

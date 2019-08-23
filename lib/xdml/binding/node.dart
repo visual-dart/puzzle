@@ -4,6 +4,7 @@ import 'package:analyzer/dart/ast/ast_factory.dart';
 import 'package:analyzer/src/dart/ast/token.dart';
 import 'package:front_end/src/scanner/token.dart';
 
+import '../base.dart';
 import '../app.dart';
 import 'base.dart';
 
@@ -34,6 +35,10 @@ ListLiteral createNodeList(
           null)
       : null;
   return fac.listLiteral(null, typeList, null, list, null);
+}
+
+dynamic createEscapeText(AstFactory fac, String text) {
+  return fac.simpleIdentifier(new StringToken(TokenType.STRING, text, 0));
 }
 
 FunctionExpressionInvocation createFunctionInvokation(
@@ -92,11 +97,11 @@ List<SimpleIdentifier> insertTextNode(AstFactory fac, String text) {
 }
 
 List<Turn> normalizeIfElseOfNodes(
-    List<TempPayload> nodes, bool canUseIfElement) {
+    List<TempPayload> payloads, bool canUseIfElement) {
   List<Turn> turns = [];
-  for (var idx = 0; idx < nodes.length; idx++) {
+  for (var idx = 0; idx < payloads.length; idx++) {
     // print("start step ${idx + 1}");
-    var item = nodes[idx];
+    var item = payloads[idx];
     var child = item.node;
     var ifIdx = child.attrs.indexWhere((i) => isStatementIf(i));
     if (ifIdx >= 0) {
@@ -109,8 +114,8 @@ List<Turn> normalizeIfElseOfNodes(
       item.isElse = true;
     }
     if (idx > 0) {
-      var previousItem = nodes[idx - 1];
-      if (previousItem.isIf) {
+      var previousItem = payloads[idx - 1];
+      if (previousItem.isIf && !previousItem.isSelf) {
         if (!canUseIfElement && !item.isElse) {
           throw UnsupportedError(
               "generate tree node failed -> statement 'if' can't exist without statement 'else'");
@@ -123,26 +128,44 @@ List<Turn> normalizeIfElseOfNodes(
       }
     }
   }
-  for (var idx = 0; idx < nodes.length; idx++) {
+  for (var idx = 0; idx < payloads.length; idx++) {
     // print(idx);
-    var item = nodes[idx];
-    if (item.isIfStatement) {
-      var item2 = nodes[idx + 1];
-      turns.add(new Turn([item, item2])..type = TurnType.statement);
+    var payload = payloads[idx];
+    if (payload.isSelf) {
+      var node = payload.node;
+      var elseNode =
+          node.attrs.firstWhere((i) => isStatementElse(i), orElse: () => null);
+      var newEscape = new ComponentTreeNode(
+          true,
+          "EscapeText",
+          /** 暂时不处理，需要改 */ null,
+          XDML,
+          [],
+          [],
+          elseNode?.value,
+          node.parent);
+      turns.add(
+          new Turn([payload, new TempPayload(newEscape, payload.slot, -1)])
+            ..type = TurnType.statement);
+      continue;
+    }
+    if (payload.isIfStatement) {
+      var payloadNext = payloads[idx + 1];
+      turns.add(new Turn([payload, payloadNext])..type = TurnType.statement);
       idx++;
       continue;
     }
-    if (item.isIfElement) {
-      var item2 = nodes[idx + 1];
-      if (item2.isElse) {
-        turns.add(new Turn([item, item2])..type = TurnType.element);
+    if (payload.isIfElement) {
+      var payloadNext = payloads[idx + 1];
+      if (payloadNext.isElse) {
+        turns.add(new Turn([payload, payloadNext])..type = TurnType.element);
         idx++;
       } else {
-        turns.add(new Turn([item])..type = TurnType.element);
+        turns.add(new Turn([payload])..type = TurnType.element);
       }
       continue;
     }
-    turns.add(new Turn([item])..type = TurnType.node);
+    turns.add(new Turn([payload])..type = TurnType.node);
   }
   return turns;
 }
