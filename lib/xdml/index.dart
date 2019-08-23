@@ -38,7 +38,8 @@ BindingRelation createXdmlBinding(
     var result = parseXmlDocument(paths.xdmlPath, viewPath);
     var references = result.references;
     var namespaces = result.namespaces;
-    var application = result.app;
+    var application = result.host;
+    var templates = result.templates;
 
     List<Directive> otherDirecs = [];
     List<Directive> imports = [];
@@ -76,11 +77,24 @@ BindingRelation createXdmlBinding(
             }))
         .toList();
 
+    List<VariableDeclaration> tpls = [];
+    for (var entry in templates.entries) {
+      var name = entry.key;
+      var node = entry.value;
+      var xdmlFac = new XDMLNodeFactory(node.host, null, invokeParams: []);
+      var fac = xdmlFac.fac;
+      var rendered = xdmlFac.generateTree(node.host);
+      tpls.add(fac.variableDeclaration(
+          fac.simpleIdentifier(new StringToken(TokenType.STRING, name, 0)),
+          null,
+          rendered));
+    }
+
     var buildFn =
         new XDMLNodeFactory(application, className, invokeParams: invokeParams)
-            .generate();
-
-    refreshBindingFile(paths, formatter, importsBindingAdd, buildFn);
+            .generate(variables: tpls);
+    refreshBindingFile(paths, formatter, importsBindingAdd, buildFn,
+        templates: tpls);
 
     var newSourceFile =
         updateSpurceFile(fac, sourceFile, newDirectives, newDeclarations);
@@ -96,7 +110,7 @@ BindingRelation createXdmlBinding(
       if (error is FileSystemException) {
         print(RED(error.toString()));
       } else {
-        print(RED(error));
+        print(RED(error.toString()));
       }
     }
     return null;
@@ -104,7 +118,8 @@ BindingRelation createXdmlBinding(
 }
 
 void refreshBindingFile(Paths paths, dartfmt.DartFormatter formatter,
-    List<Directive> imports, FunctionDeclaration buildFn) {
+    List<Directive> imports, FunctionDeclaration buildFn,
+    {List<VariableDeclaration> templates}) {
   File bindingFile = new File(paths.realView);
 
   List<AstNode> list = [];

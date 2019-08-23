@@ -57,47 +57,54 @@ class ComponentTreeNode {
 }
 
 ComponentTreeNode resolveApp(List<DartReference> references,
-    Map<String, String> namespaces, xml.XmlElement appRoot) {
+    Map<String, String> namespaces, xml.XmlNode appRoot) {
   var internal = false;
-  var rootName = appRoot.name.local;
-  var nsUri = appRoot.name.namespaceUri;
-  var hasNs = namespaces.containsKey(nsUri);
-  var rootNs = namespaces[nsUri];
-  // print("${hasNs ? "$rootNs:" : ""}$rootName");
-  // 内置节点类型
-  if (nsUri == XDML) {
-    internal = true;
-  }
-  appRoot.normalize();
-  var attrs = appRoot.attributes
-      .map((attr) => createAttribute(attr, namespaces))
-      .toList();
-  var isText = rootName == "Text" && !hasNs;
-  List<ComponentTreeNode> children = isText
-      ? []
-      : appRoot.children
-          .where((n) => n is xml.XmlElement)
-          .map((i) => resolveApp(references, namespaces, i))
-          .toList();
-  var node = new ComponentTreeNode(
-      internal,
-      rootName,
-      hasNs ? rootNs : null,
-      hasNs ? nsUri : null,
-      attrs,
-      [],
-      isText ? appRoot.children.elementAt(0).toString() : null,
-      null);
-  for (var c in children) {
-    c.parent = node;
-    var idx = children.indexOf(c);
-    var slot = c.attrs.firstWhere((t) => isXDMLSlot(t), orElse: () => null);
-    if (slot != null) {
-      node.slots.add(new SlotNode(c.ns, c.nsUri, slot.value, c.name, idx));
+  if (appRoot is xml.XmlElement) {
+    var rootName = appRoot.name.local;
+    var nsUri = appRoot.name.namespaceUri;
+    var hasNs = namespaces.containsKey(nsUri);
+    var rootNs = namespaces[nsUri];
+    if (nsUri == XDML) {
+      internal = true;
     }
+    // print("${hasNs ? "$rootNs:" : ""}$rootName");
+    // 内置节点类型
+    appRoot.normalize();
+    var attrs = appRoot.attributes
+        .map((attr) => createAttribute(attr, namespaces))
+        .toList();
+    var isText = rootName == "Text" && !hasNs;
+    List<ComponentTreeNode> children = isText
+        ? []
+        : appRoot.children
+            .where((n) => n is xml.XmlElement)
+            .map((i) => resolveApp(references, namespaces, i))
+            .toList();
+    var node = new ComponentTreeNode(
+        internal,
+        rootName,
+        hasNs ? rootNs : null,
+        hasNs ? nsUri : null,
+        attrs,
+        [],
+        isText ? appRoot.children.elementAt(0).toString() : null,
+        null);
+    for (var c in children) {
+      c.parent = node;
+      var idx = children.indexOf(c);
+      var slot = c.attrs.firstWhere((t) => isXDMLSlot(t), orElse: () => null);
+      if (slot != null) {
+        node.slots.add(new SlotNode(c.ns, c.nsUri, slot.value, c.name, idx));
+      }
+    }
+    node.children = children;
+    return node;
   }
-  node.children = children;
-  return node;
+  if (appRoot is xml.XmlText) {
+    return new ComponentTreeNode(true, "EscapeText", null, null, [], [],
+        "'${appRoot.toString()}'", null);
+  }
+  return null;
 }
 
 AttributeNode createAttribute(

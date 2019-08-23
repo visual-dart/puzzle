@@ -27,11 +27,21 @@ class DartReference {
   }
 }
 
-class DocumentParesResult {
+class ElementParesResult {
+  final ComponentTreeNode host;
+  ComponentTreeNode parent = null;
+  ElementParesResult(this.host);
+}
+
+class DocumentParesResult extends ElementParesResult {
+  Map<String, ElementParesResult> templates = {};
   List<DartReference> references = [];
   Map<String, String> namespaces = {};
-  ComponentTreeNode app = null;
-  DocumentParesResult();
+  DocumentParesResult(host) : super(host);
+
+  void addTemplate(String name, ComponentTreeNode template) {
+    templates[name] = new ElementParesResult(template)..parent = this.host;
+  }
 }
 
 DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
@@ -95,19 +105,50 @@ DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
 
   xml.XmlElement appRoot = null;
   var childrenNodes = main.children.where((i) => i is xml.XmlElement).toList();
+  List<Map<String, dynamic>> templateRefs = [];
   if (childrenNodes.length == 1) {
     appRoot = childrenNodes.elementAt(0);
   } else if (childrenNodes.length > 1) {
-    appRoot = childrenNodes.where((i) => i is xml.XmlElement).firstWhere((e) {
-      var attrs = e.attributes;
-      var hostBuild = attrs.firstWhere(
-          (i) =>
-              i.name.namespaceUri == XDML &&
-              i.name.local == "host" &&
-              i.value == "build",
-          orElse: () => null);
-      return hostBuild == null ? false : true;
-    }, orElse: () => null);
+    List<xml.XmlNode> elements =
+        childrenNodes.where((i) => i is xml.XmlElement).toList();
+    for (var ele in elements) {
+      if (ele is xml.XmlElement &&
+          ele.name.local == "Template" &&
+          ele.name.namespaceUri == XDML) {
+        // print(local);
+        var refName = ele.attributes.firstWhere(
+            (i) => i.name.namespaceUri == XDML && i.name.local == "ref",
+            orElse: () => null);
+        if (refName != null && ele.children.isNotEmpty) {
+          ele.normalize();
+          var firstElement = ele.children
+              .firstWhere((e) => e is xml.XmlElement, orElse: () => null);
+          if (firstElement != null) {
+            templateRefs.add({"name": refName.value, "element": firstElement});
+          } else {
+            templateRefs.add({
+              "name": refName.value,
+              "element": ele.children.elementAt(0).toString()
+            });
+          }
+          continue;
+        }
+      }
+      var attrs = ele.attributes;
+      // 不要重复查找host
+      var hostBuild = appRoot != null
+          ? null
+          : attrs.firstWhere(
+              (i) =>
+                  i.name.namespaceUri == XDML &&
+                  i.name.local == "host" &&
+                  i.value == "build",
+              orElse: () => null);
+      if (hostBuild != null) {
+        appRoot = ele;
+        continue;
+      }
+    }
   }
 
   if (appRoot == null) {
@@ -117,10 +158,21 @@ DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
 
   var app = resolveApp(references, namespaces, appRoot);
 
-  var result = new DocumentParesResult()
+  var result = new DocumentParesResult(app)
     ..namespaces = namespaces
-    ..references = references
-    ..app = app;
+    ..references = references;
+
+  for (var tpl in templateRefs) {
+    var ele = tpl["element"];
+    var name = tpl["name"];
+    if (ele == null || name == null) continue;
+    if (ele is xml.XmlElement) {
+      result.addTemplate(name, resolveApp(references, namespaces, ele));
+    } else {
+      result.addTemplate(
+          name, resolveApp(references, namespaces, new xml.XmlText(ele)));
+    }
+  }
 
   return result;
 }

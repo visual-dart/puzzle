@@ -44,8 +44,20 @@ class XDMLNodeFactory {
 
   XDMLNodeFactory(this.app, this.className, {this.invokeParams});
 
-  FunctionDeclaration generate() {
+  FunctionDeclaration generate({Iterable<VariableDeclaration> variables}) {
     var content = generateTree(app);
+    List<Statement> statements = [];
+    if (variables != null && variables.isNotEmpty) {
+      var variableDeclarations = <VariableDeclaration>[]
+        ..addAll(variables ?? []);
+      variableDeclarations.forEach((va) => statements.add(
+          fac.variableDeclarationStatement(
+              fac.variableDeclarationList(
+                  null, null, new KeywordToken(Keyword.VAR, 0), null, [va]),
+              null)));
+    }
+    statements.add(fac.returnStatement(
+        new KeywordToken(Keyword.RETURN, 0), content, null));
     return fac.functionDeclaration(
         null,
         null,
@@ -82,35 +94,35 @@ class XDMLNodeFactory {
                 null,
                 fac.block(
                     new SimpleToken(TokenType.OPEN_CURLY_BRACKET, 0),
-                    [
-                      fac.returnStatement(
-                          new KeywordToken(Keyword.RETURN, 0), content, null)
-                    ],
+                    statements,
                     new SimpleToken(TokenType.CLOSE_CURLY_BRACKET, 0)))));
   }
 
-  Expression generateTree(ComponentTreeNode app, {String subName}) {
-    var internal = app.internal;
-    var attrs = app.attrs.where((i) => !isXDMLSlot(i)).toList();
-    var children = app.children;
-    var slots = app.slots;
+  Expression generateTree(ComponentTreeNode host, {String subName}) {
+    var internal = host.internal;
+    var attrs = host.attrs.where((i) => !isXDMLSlot(i)).toList();
+    var children = host.children;
+    var slots = host.slots;
     var commonAttrs = internal ? <AttributeNode>[] : attrs;
 
-    List<dynamic> content = app.innerText != null
-        ? insertTextNode(app.innerText)
-        : insertCommonNode(internal, commonAttrs, children, slots, app);
+    List<dynamic> content = host.innerText != null
+        ? insertTextNode(host.innerText)
+        : insertCommonNode(internal, commonAttrs, children, slots, host);
 
     if (!internal) {
-      return createFunctionInvokation(app, content);
+      return createFunctionInvokation(host, content);
     }
-    if (app.name == "NodeList") {
+    if (host.name == "NodeList") {
       return createNodeList(attrs, content);
     }
-    if (app.name == "EscapeText") {
-      return createEscapeText(app.innerText);
+    if (host.name == "EscapeText") {
+      return createEscapeText(host.innerText);
+    }
+    if (host.name == "Template") {
+      return createFunctionInvokation(host, content);
     }
     throw UnsupportedError(
-        "parse tree node failed -> unsupport node ${app.fullname}");
+        "parse tree node failed -> unsupport node ${host.fullname}");
   }
 
   List<AstNode> insertCommonNode(
@@ -285,7 +297,7 @@ class XDMLNodeFactory {
   }
 
   FunctionExpressionInvocation createFunctionInvokation(
-      ComponentTreeNode app, List<dynamic> content) {
+      ComponentTreeNode host, List<dynamic> content) {
     // fix type mismatch
     List<Expression> list = [];
     for (var item in content) {
@@ -298,7 +310,7 @@ class XDMLNodeFactory {
     }
     return fac.functionExpressionInvocation(
         fac.simpleIdentifier(
-            new StringToken(TokenType.IDENTIFIER, app.fullname, 0)),
+            new StringToken(TokenType.IDENTIFIER, host.fullname, 0)),
         null,
         fac.argumentList(null, list, null));
   }
