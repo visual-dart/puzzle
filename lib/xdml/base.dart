@@ -98,8 +98,19 @@ DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
   if (childrenNodes.length == 1) {
     appRoot = childrenNodes.elementAt(0);
   } else if (childrenNodes.length > 1) {
-    appRoot = childrenNodes.elementAt(1);
-  } else {
+    appRoot = childrenNodes.where((i) => i is xml.XmlElement).firstWhere((e) {
+      var attrs = e.attributes;
+      var hostBuild = attrs.firstWhere(
+          (i) =>
+              i.name.namespaceUri == XDML &&
+              i.name.local == "host" &&
+              i.value == "build",
+          orElse: () => null);
+      return hostBuild == null ? false : true;
+    }, orElse: () => null);
+  }
+
+  if (appRoot == null) {
     throw new UnsupportedError(
         "resolve xdml $viewPath file failed => app root not found");
   }

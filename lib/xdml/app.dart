@@ -113,6 +113,10 @@ AttributeNode createAttribute(
       attr.value);
 }
 
+bool isXDMLHost(AttributeNode t) {
+  return t.name == "host" && t.nsUri == XDML;
+}
+
 bool isXDMLSlot(AttributeNode t) {
   return t.name == "slot" && t.nsUri == XDML;
 }

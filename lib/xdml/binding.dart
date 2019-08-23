@@ -126,7 +126,8 @@ class XDMLNodeFactory {
     bool canUseIfElement = internal && app.name == "NodeList";
 
     for (var attr in attrs) {
-      if (isStatementIf(attr) || isStatementElse(attr)) continue;
+      if (isStatementIf(attr) || isStatementElse(attr) || isXDMLHost(attr))
+        continue;
       var insert = isInsertBind(attr)
           ? attr.value
           : parseInsertExpression(attr.value).value;
