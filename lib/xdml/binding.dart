@@ -44,8 +44,12 @@ class XDMLNodeFactory {
 
   XDMLNodeFactory(this.app, this.className, {this.invokeParams});
 
-  FunctionDeclaration generate({Iterable<VariableDeclaration> variables}) {
-    var content = generateTree(app);
+  FunctionDeclaration generateFn(
+      {Iterable<VariableDeclaration> variables,
+      String returnType,
+      String contextName,
+      String contextType}) {
+    var content = generateTree();
     List<Statement> statements = [];
     if (variables != null && variables.isNotEmpty) {
       var variableDeclarations = <VariableDeclaration>[]
@@ -62,43 +66,32 @@ class XDMLNodeFactory {
         null,
         null,
         null,
-        fac.typeName(
-            fac.simpleIdentifier(
-                new StringToken(TokenType.STRING, "Widget", 0)),
-            null),
+        fac.typeName(createIdentifier(returnType ?? "Widget"), null),
         null,
-        fac.simpleIdentifier(new StringToken(TokenType.STRING, "bindXDML", 0)),
+        createIdentifier("bindXDML"),
         fac.functionExpression(
             null,
             fac.formalParameterList(
               null,
               invokeParams.map((i) {
                 var paramName = i.name;
-                var isContext = paramName == "context";
-                var typeName = isContext ? "BuildContext" : "dynamic";
+                var isContext = paramName == (contextName ?? "context");
+                var typeName =
+                    isContext ? (contextType ?? "BuildContext") : "dynamic";
                 var param = fac.simpleFormalParameter2(
-                    type: fac.typeName(
-                        fac.simpleIdentifier(
-                            new StringToken(TokenType.STRING, typeName, 0)),
-                        null),
-                    identifier: fac.simpleIdentifier(
-                        new StringToken(TokenType.STRING, paramName, 0)));
+                    type: fac.typeName(createIdentifier(typeName), null),
+                    identifier: createIdentifier(paramName));
                 return param;
               }).toList(),
               null,
               null,
               null,
             ),
-            fac.blockFunctionBody(
-                null,
-                null,
-                fac.block(
-                    new SimpleToken(TokenType.OPEN_CURLY_BRACKET, 0),
-                    statements,
-                    new SimpleToken(TokenType.CLOSE_CURLY_BRACKET, 0)))));
+            fac.blockFunctionBody(null, null, createBlock(statements))));
   }
 
-  Expression generateTree(ComponentTreeNode host, {String subName}) {
+  Expression generateTree({ComponentTreeNode app, String subName}) {
+    var host = app ?? this.app;
     var internal = host.internal;
     var attrs = host.attrs.where((i) => !isXDMLSlot(i)).toList();
     var children = host.children;
@@ -176,8 +169,7 @@ class XDMLNodeFactory {
         var elseChild = turn.payload.length > 1 ? turn.payload[1].node : null;
         var ifAttr = ifChild.attrs
             .firstWhere((i) => isStatementIf(i), orElse: () => null);
-        var condition = fac.simpleStringLiteral(
-            new StringToken(TokenType.STRING, ifAttr.value, 0), '');
+        var condition = createStringLiteral(ifAttr.value);
         var then = createNormalParamByChildNode(attrs, ifChild);
         var elseNode = elseChild == null
             ? null
@@ -239,7 +231,7 @@ class XDMLNodeFactory {
 
   Expression createNormalParamByChildNode(
       Iterable<AttributeNode> attrs, ComponentTreeNode targetChild) {
-    return generateTree(targetChild);
+    return generateTree(app: targetChild);
   }
 
   NamedExpression createNamedParamByChildNode(
@@ -249,19 +241,15 @@ class XDMLNodeFactory {
       bool useIfElement}) {
     return fac.namedExpression(
         fac.label(
-            fac.simpleIdentifier(
-                new StringToken(TokenType.STRING, slotName, 0)),
-            new SimpleToken(TokenType.COLON, 0)),
+            createIdentifier(slotName), new SimpleToken(TokenType.COLON, 0)),
         elseNode == null
-            ? generateTree(targetChild)
+            ? generateTree(app: targetChild)
             : fac.conditionalExpression(
-                fac.simpleStringLiteral(
-                    new StringToken(TokenType.STRING, ifStatement.value, 0),
-                    ''),
+                createStringLiteral(ifStatement.value),
                 new SimpleToken(TokenType.QUESTION, 0),
-                generateTree(targetChild),
+                generateTree(app: targetChild),
                 null,
-                generateTree(elseNode)));
+                generateTree(app: elseNode)));
   }
 
   ListLiteral createNodeList(List<AttributeNode> attrs, List<dynamic> content) {
@@ -280,20 +268,13 @@ class XDMLNodeFactory {
     var typeMeta = type?.value;
     var typeList = typeMeta != null
         ? fac.typeArgumentList(
-            null,
-            [
-              fac.typeName(
-                  fac.simpleIdentifier(
-                      new StringToken(TokenType.STRING, typeMeta, 0)),
-                  null)
-            ],
-            null)
+            null, [fac.typeName(createIdentifier(typeMeta), null)], null)
         : null;
     return fac.listLiteral(null, typeList, null, list, null);
   }
 
   SimpleIdentifier createEscapeText(String text) {
-    return fac.simpleIdentifier(new StringToken(TokenType.STRING, text, 0));
+    return createIdentifier(text);
   }
 
   FunctionExpressionInvocation createFunctionInvokation(
@@ -337,17 +318,14 @@ class XDMLNodeFactory {
   NamedExpression createNamedParamByAttr(String slotName, String insert) {
     return fac.namedExpression(
         fac.label(
-            fac.simpleIdentifier(
-                new StringToken(TokenType.STRING, slotName, 0)),
-            new SimpleToken(TokenType.COLON, 0)),
-        fac.simpleIdentifier(new StringToken(TokenType.STRING, insert, 0)));
+            createIdentifier(slotName), new SimpleToken(TokenType.COLON, 0)),
+        createIdentifier(insert));
   }
 
   List<SimpleIdentifier> insertTextNode(String text) {
     List<SimpleIdentifier> content = [];
     var insert = parseInsertExpression(text);
-    content.add(fac
-        .simpleIdentifier(new StringToken(TokenType.STRING, insert.value, 0)));
+    content.add(createIdentifier(insert.value));
     return content;
   }
 
@@ -423,5 +401,22 @@ class XDMLNodeFactory {
       turns.add(new Turn([payload])..type = TurnType.node);
     }
     return turns;
+  }
+
+  StringToken createStringToken(String value) {
+    return new StringToken(TokenType.STRING, value, 0);
+  }
+
+  SimpleIdentifier createIdentifier(String value) {
+    return fac.simpleIdentifier(createStringToken(value));
+  }
+
+  SimpleStringLiteral createStringLiteral(String value) {
+    return fac.simpleStringLiteral(createStringToken(value), '');
+  }
+
+  Block createBlock(List<Statement> statements) {
+    return fac.block(new SimpleToken(TokenType.OPEN_CURLY_BRACKET, 0),
+        statements, new SimpleToken(TokenType.CLOSE_CURLY_BRACKET, 0));
   }
 }

@@ -1,6 +1,6 @@
 import 'dart:core';
 
-import 'package:xml/xml.dart' as xml;
+import 'package:xml/xml.dart';
 
 import 'base.dart';
 
@@ -57,9 +57,9 @@ class ComponentTreeNode {
 }
 
 ComponentTreeNode resolveApp(List<DartReference> references,
-    Map<String, String> namespaces, xml.XmlNode appRoot) {
+    Map<String, String> namespaces, XmlNode appRoot) {
   var internal = false;
-  if (appRoot is xml.XmlElement) {
+  if (appRoot is XmlElement) {
     var rootName = appRoot.name.local;
     var nsUri = appRoot.name.namespaceUri;
     var hasNs = namespaces.containsKey(nsUri);
@@ -77,7 +77,7 @@ ComponentTreeNode resolveApp(List<DartReference> references,
     List<ComponentTreeNode> children = isText
         ? []
         : appRoot.children
-            .where((n) => n is xml.XmlElement)
+            .where((n) => n is XmlElement)
             .map((i) => resolveApp(references, namespaces, i))
             .toList();
     var node = new ComponentTreeNode(
@@ -100,7 +100,7 @@ ComponentTreeNode resolveApp(List<DartReference> references,
     node.children = children;
     return node;
   }
-  if (appRoot is xml.XmlText) {
+  if (appRoot is XmlText) {
     return new ComponentTreeNode(true, "EscapeText", null, null, [], [],
         "'${appRoot.toString()}'", null);
   }
@@ -108,7 +108,7 @@ ComponentTreeNode resolveApp(List<DartReference> references,
 }
 
 AttributeNode createAttribute(
-    xml.XmlAttribute attr, Map<String, String> namespaces) {
+    XmlAttribute attr, Map<String, String> namespaces) {
   var attrName = attr.name.local;
   var attrNsUri = attr.name.namespaceUri;
   var hasAttrNs = namespaces.containsKey(attrNsUri);
