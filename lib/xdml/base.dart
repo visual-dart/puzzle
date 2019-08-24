@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:xml/xml.dart';
 
 import 'app.dart';
+import 'vnode.dart';
 
 final FLUTTER = "https://github.com/flutter/flutter/wiki";
 final XDML = "https://github.com/miao17game/xdml/wiki/xdml";
@@ -53,24 +54,23 @@ DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
         "resolve xdml $viewPath file failed => XDML Page declaration not found");
   }
 
-  var main = mains.elementAt(0);
-  var attrs = main.attributes.toList();
+  var main = VNode.fromNode(mains.elementAt(0));
+  var attrs = main.attrs;
   List<DartReference> references = [];
   Map<String, String> namespaces = {};
 
   for (var attr in attrs) {
-    var refName = attr.name.toString();
+    var refName = attr.name;
     var refValue = attr.value;
-    if (refName.startsWith("xmlns:")) {
-      var alias = refName.replaceAll("xmlns:", "");
-      namespaces[refValue] = alias;
+    if (attr.nsLabel == "xmlns") {
+      namespaces[refValue] = refName;
       if (isInternalNs(refValue)) {
         continue;
       }
       var splits = refValue.split(":");
       var type = splits.elementAt(0);
       var name = splits.elementAt(1);
-      references.add(new DartReference(type, name, alias));
+      references.add(new DartReference(type, name, refName));
     }
   }
 
@@ -79,17 +79,17 @@ DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
         "resolve xdml $viewPath file failed => dart namespace not found");
   }
 
-  var refNodes = main.findAllElements("Reference", namespace: XDML).toList();
+  var refNodes =
+      main.children.where((i) => i.name == "Reference" && i.ns == XDML);
   if (refNodes != null && refNodes.isNotEmpty) {
     var refRoot = refNodes.elementAt(0);
-    refRoot.children.where((e) => e is XmlElement).forEach((child) {
-      XmlElement thisNode = child;
-      var name = thisNode.name;
-      if (name.namespaceUri != XDML) return;
-      if (name.local == "Import") {
-        var childAttrs = thisNode.attributes;
-        var pathUri = childAttrs.firstWhere((i) => i.name.toString() == "path",
-            orElse: () => null);
+    refRoot.children.where((e) => e is VNodeElement).forEach((child) {
+      VNodeElement thisNode = child;
+      if (thisNode.ns != XDML) return;
+      if (thisNode.name == "Import") {
+        var childAttrs = thisNode.attrs;
+        var pathUri =
+            childAttrs.firstWhere((i) => i.name == "path", orElse: () => null);
         if (pathUri != null) {
           var secs = pathUri.value.split(":");
           if (secs.length > 1) {
@@ -103,33 +103,28 @@ DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
     });
   }
 
-  XmlElement appRoot = null;
-  var childrenNodes = main.children.where((i) => i is XmlElement).toList();
+  VNode appRoot = null;
+  var childrenNodes = main.children.where((i) => i is VNodeElement).toList();
   List<Map<String, dynamic>> templateRefs = [];
   if (childrenNodes.length == 1) {
     appRoot = childrenNodes.elementAt(0);
   } else if (childrenNodes.length > 1) {
-    List<XmlNode> elements =
-        childrenNodes.where((i) => i is XmlElement).toList();
-    for (var ele in elements) {
+    for (var ele in childrenNodes) {
       if (isXDMLTemplate(ele)) {
         // print(local);
         var refName = getTemplateRefName(ele);
         if (refName != null && ele.children.isNotEmpty) {
-          ele.normalize();
           var firstElement = getFirstElement(ele);
           if (firstElement != null) {
             templateRefs.add({"name": refName.value, "element": firstElement});
           } else {
-            templateRefs.add({
-              "name": refName.value,
-              "element": ele.children.elementAt(0).toString()
-            });
+            templateRefs.add(
+                {"name": refName.value, "element": ele.children.elementAt(0)});
           }
           continue;
         }
       }
-      var attrs = ele.attributes;
+      var attrs = ele.attrs;
       // 不要重复查找host
       var hostBuild = appRoot != null ? null : getHostBuildNode(attrs);
       if (hostBuild != null) {
@@ -154,38 +149,27 @@ DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
     var ele = tpl["element"];
     var name = tpl["name"];
     if (ele == null || name == null) continue;
-    if (ele is XmlElement) {
-      result.addTemplate(name, resolveApp(references, namespaces, ele));
-    } else {
-      result.addTemplate(
-          name, resolveApp(references, namespaces, new XmlText(ele)));
-    }
+    result.addTemplate(name, resolveApp(references, namespaces, ele));
   }
 
   return result;
 }
 
-XmlAttribute getHostBuildNode(List<XmlAttribute> attrs) {
+VNodeAttr getHostBuildNode(List<VNodeAttr> attrs) {
   return attrs.firstWhere(
-      (i) =>
-          i.name.namespaceUri == XDML &&
-          i.name.local == "host" &&
-          i.value == "build",
+      (i) => i.ns == XDML && i.name == "host" && i.value == "build",
       orElse: () => null);
 }
 
-XmlNode getFirstElement(XmlNode ele) {
-  return ele.children.firstWhere((e) => e is XmlElement, orElse: () => null);
+VNodeElement getFirstElement(VNodeElement ele) {
+  return ele.children.firstWhere((e) => e is VNodeElement, orElse: () => null);
 }
 
-XmlAttribute getTemplateRefName(XmlNode ele) {
-  return ele.attributes.firstWhere(
-      (i) => i.name.namespaceUri == XDML && i.name.local == "ref",
-      orElse: () => null);
+VNodeAttr getTemplateRefName(VNode ele) {
+  return ele.attrs
+      .firstWhere((i) => i.ns == XDML && i.name == "ref", orElse: () => null);
 }
 
-bool isXDMLTemplate(XmlNode ele) {
-  return ele is XmlElement &&
-      ele.name.local == "Template" &&
-      ele.name.namespaceUri == XDML;
+bool isXDMLTemplate(VNode ele) {
+  return ele is VNodeElement && ele.name == "Template" && ele.ns == XDML;
 }
