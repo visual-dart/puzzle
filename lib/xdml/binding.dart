@@ -105,18 +105,141 @@ class XDMLNodeFactory {
     if (!internal) {
       return createFunctionInvokation(host, content);
     }
-    if (host.name == "NodeList") {
+    if (host.name == InternalNodes.NodeList) {
       return createNodeList(attrs, content);
     }
-    if (host.name == "EscapeText") {
+    if (host.name == InternalNodes.EscapeText) {
       return createEscapeText(host.innerText);
     }
-    if (host.name == "Template") {
+    if (host.name == InternalNodes.PartialView) {
       return createFunctionInvokation(host, content);
     }
     throw UnsupportedError(
         "parse tree node failed -> unsupport node ${host.fullname}");
   }
+
+  FunctionExpression generateViewFn(ComponentTreeNode host) {
+    // print(host.name);
+    if (host.name == InternalNodes.PartialViewFn) {
+      var attrs = host.attrs;
+      List<VariableDeclarationList> declarations = [];
+      List<FormalParameter> params = [];
+      // List<FormalParameter> paramNameds = [];
+      for (var attr in attrs) {
+        // print(attr.name);
+        if (attr.name.startsWith("pass-")) {
+          var paramName = attr.name.replaceAll("pass-", "");
+          var paramType = attr.value;
+          params.add(fac.simpleFormalParameter2(
+              type: fac.typeName(createIdentifier(paramType), null),
+              identifier: createIdentifier(paramName)));
+          continue;
+        }
+        if (attr.name.startsWith("namedPass-")) {
+          // var paramNames = attr.name.replaceAll("namedPass-", "").split("-");
+          // var paramType = attr.value;
+          // String sourceName;
+          // sourceName = paramNames.elementAt(0);
+          // paramNameds.add(fac.fieldFormalParameter2(
+          //     thisKeyword: null,
+          //     period: null,
+          //     identifier: createIdentifier(sourceName),
+          //     type: fac.typeName(createIdentifier(paramType), null)));
+          // continue;
+        }
+        if (attr.name.startsWith("var-")) {
+          var paramName = attr.name.replaceAll("var-", "");
+          var expression = attr.value;
+          declarations.add(fac.variableDeclarationList(
+              null, null, new KeywordToken(Keyword.VAR, 0), null, [
+            fac.variableDeclaration(createIdentifier(paramName), null,
+                createStringLiteral(expression))
+          ]));
+          continue;
+        }
+      }
+      var variableStatements =
+          declarations.map((s) => fac.variableDeclarationStatement(s, null));
+      var children = host.children;
+      if (children.isEmpty) {
+        throw UnsupportedError(
+            "create view generator failed -> children nodes not found");
+      }
+      List<ComponentTreeNode> childNodes = [];
+      List<ExpressionStatement> executions = [];
+      for (var i in children) {
+        if (i.nsUri == XDML && i.name == InternalNodes.Execution) {
+          executions.add(
+              fac.expressionStatement(createIdentifier((i.innerText)), null));
+        } else {
+          childNodes.add(i);
+        }
+      }
+      Expression result;
+      if (childNodes.length == 1) {
+        var node = children.elementAt(0);
+        result = createFunctionInvokation(node, []);
+      } else {
+        var nodeThis = childNodes.elementAt(0);
+        var nodeNext = childNodes.elementAt(1);
+        var ifNode;
+        var elseNode;
+        var attrIf = getStatementIf(nodeThis);
+        if (attrIf == null) {
+          throw UnsupportedError(
+              "create view generator failed -> render node's count should be only one");
+        } else {
+          var isString = attrIf.value;
+          var attrElse = getStatementElse(nodeThis);
+          if (attrElse != null) {
+            ifNode = generateTree(app: nodeThis);
+            elseNode = createIdentifier(attrElse.value);
+            result = fac.conditionalExpression(
+                createStringLiteral(isString), null, ifNode, null, elseNode);
+          } else {
+            var attrElse = getStatementElse(nodeNext);
+            if (attrElse == null) {
+              throw UnsupportedError(
+                  "create view generator failed -> no else node found");
+            }
+            ifNode = generateTree(app: nodeThis);
+            elseNode = generateTree(app: nodeNext);
+            result = fac.conditionalExpression(
+                createStringLiteral(isString), null, ifNode, null, elseNode);
+          }
+        }
+      }
+      var resurnStatement = fac.returnStatement(
+          new KeywordToken(Keyword.RETURN, 0), result, null);
+      return fac.functionExpression(
+          null,
+          fac.formalParameterList(
+              null,
+              <FormalParameter>[]..addAll(params) /*..addAll(paramNameds)*/,
+              new SimpleToken(TokenType.OPEN_CURLY_BRACKET, 0),
+              new SimpleToken(TokenType.CLOSE_CURLY_BRACKET, 0),
+              null),
+          fac.blockFunctionBody(
+              null,
+              null,
+              createBlock(<Statement>[]
+                ..addAll(variableStatements)
+                ..addAll(executions)
+                ..add(resurnStatement))));
+    } else {
+      return null;
+    }
+  }
+
+  bool isIfElseAttrNode(ComponentTreeNode i) {
+    return (getStatementIf(i) != null) || (getStatementElse(i) != null);
+  }
+
+  AttributeNode getStatementElse(ComponentTreeNode i) =>
+      i.attrs.firstWhere((i) => isStatementElse(i), orElse: () => null);
+
+  AttributeNode getStatementIf(ComponentTreeNode i) =>
+      i.attrs.firstWhere((i) => isStatementIf(i), orElse: () => null);
 
   List<AstNode> insertCommonNode(
       bool internal,
@@ -128,7 +251,7 @@ class XDMLNodeFactory {
     List<NamedExpression> slotNodes = [];
     List<AstNode> queueNodes = [];
 
-    bool canUseIfElement = internal && app.name == "NodeList";
+    bool canUseIfElement = internal && app.name == InternalNodes.NodeList;
 
     for (var attr in attrs) {
       if (isStatementIf(attr) || isStatementElse(attr) || isXDMLHost(attr))
@@ -370,7 +493,7 @@ class XDMLNodeFactory {
             .firstWhere((i) => isStatementElse(i), orElse: () => null);
         var newEscape = new ComponentTreeNode(
             true,
-            "EscapeText",
+            InternalNodes.EscapeText,
             /** 暂时不处理，需要改 */ null,
             XDML,
             [],

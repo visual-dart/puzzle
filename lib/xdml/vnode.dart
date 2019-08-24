@@ -1,15 +1,6 @@
 import 'package:xml/xml.dart' as xml;
 
-import 'base.dart';
-
 final RNRegExp = new RegExp(("(\r\n|\n)\r*"), multiLine: false);
-
-bool isPlainText(xml.XmlNode node) {
-  if (node is xml.XmlElement) {
-    return node.name.namespaceUri == XDML && node.name == "PlainText";
-  }
-  return false;
-}
 
 enum VNodeType { Text, Element }
 

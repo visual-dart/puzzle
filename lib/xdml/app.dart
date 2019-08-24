@@ -69,7 +69,8 @@ ComponentTreeNode resolveApp(List<DartReference> references,
     // 内置节点类型
     var attrs =
         appRoot.attrs.map((attr) => createAttribute(attr, namespaces)).toList();
-    var isText = rootName == "Text" && !hasNs;
+    var isText = (rootName == "Text" && !hasNs) ||
+        (rootName == InternalNodes.Execution && nsUri == XDML);
     List<ComponentTreeNode> children = isText
         ? []
         : appRoot.children
@@ -97,8 +98,8 @@ ComponentTreeNode resolveApp(List<DartReference> references,
     return node;
   }
   if (appRoot is VNodeString) {
-    return new ComponentTreeNode(true, "EscapeText", null, null, [], [],
-        "'${appRoot.value}'", null);
+    return new ComponentTreeNode(
+        true, "EscapeText", null, null, [], [], "'${appRoot.value}'", null);
   }
   return null;
 }

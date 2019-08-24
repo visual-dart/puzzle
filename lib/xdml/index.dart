@@ -40,6 +40,7 @@ BindingRelation createXdmlBinding(
     var namespaces = result.namespaces;
     var application = result.host;
     var templates = result.templates;
+    var generators = result.generators;
 
     List<Directive> otherDirecs = [];
     List<Directive> imports = [];
@@ -90,9 +91,23 @@ BindingRelation createXdmlBinding(
           rendered));
     }
 
-    var buildFn =
-        new XDMLNodeFactory(application, className, invokeParams: invokeParams)
-            .generateFn(variables: tpls);
+    List<VariableDeclaration> gens = [];
+    for (var entry in generators.entries) {
+      var name = entry.key;
+      var node = entry.value;
+      var xdmlFac = new XDMLNodeFactory(node.host, null, invokeParams: []);
+      var fac = xdmlFac.fac;
+      var rendered = xdmlFac.generateViewFn(node.host);
+      gens.add(fac.variableDeclaration(
+          fac.simpleIdentifier(new StringToken(TokenType.STRING, name, 0)),
+          null,
+          rendered));
+    }
+
+    var buildFn = new XDMLNodeFactory(application, className,
+            invokeParams: invokeParams)
+        .generateFn(
+            variables: (<VariableDeclaration>[])..addAll(tpls)..addAll(gens));
     refreshBindingFile(paths, formatter, importsBindingAdd, buildFn,
         templates: tpls);
 
