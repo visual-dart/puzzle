@@ -8,26 +8,39 @@ import 'package:front_end/src/scanner/token.dart';
 import 'base.dart';
 import 'app.dart';
 
-class TempPayload {
+class IfElsePayload {
   ComponentTreeNode node;
   SlotNode slot;
   int childIndex;
+
   bool isIf = false;
   bool isElse = false;
+  bool isElseIf = false;
+  /** if声明语句，在语法块中使用 */
   bool isIfStatement = false;
+  /** if元素语句，可以在List中使用 */
   bool isIfElement = false;
-  TempPayload(this.node, this.slot, this.childIndex);
 
-  bool get isSelf => this.isIf && this.isElse;
+  bool useAsIf = false;
+  bool useAsElseIf = false;
+  bool useAsElse = false;
+
+  IfElsePayload(this.node, this.slot, this.childIndex);
+
+  /** 自关闭if声明 */
+  bool get isSelf => isElse && (isIf || isElseIf);
+
+  /** 非if声明 */
+  bool get isNotStatement => !isIf && !isElse && !isElseIf;
 }
 
-enum TurnType { statement, element, node }
+enum IfElseType { statement, element, node }
 
-class Turn {
-  TurnType type = TurnType.node;
-  List<TempPayload> payload = [];
+class IfElseSection {
+  IfElseType type = IfElseType.node;
+  List<IfElsePayload> payload = [];
 
-  Turn(this.payload);
+  IfElseSection(this.payload);
 }
 
 class InsertResult {
@@ -138,7 +151,8 @@ class XDMLNodeFactory {
       // print(attr.name);
       if (attr.name.startsWith("pass-")) {
         var paramName = attr.name.replaceAll("pass-", "");
-        var paramType = attr.value;
+        var paramType =
+            (attr.value == null || attr.value == "") ? "dynamic" : attr.value;
         params.add(fac.simpleFormalParameter2(
             type: fac.typeName(createIdentifier(paramType), null),
             identifier: createIdentifier(paramName)));
@@ -188,6 +202,7 @@ class XDMLNodeFactory {
     List<Statement> executions = [];
     Expression returnExpression;
     for (var item in result) {
+      // print(item.runtimeType);
       if (result.indexOf(item) == result.length - 1 && item is Expression) {
         returnExpression = item;
       } else if (item is Statement) {
@@ -225,19 +240,23 @@ class XDMLNodeFactory {
     List<NamedExpression> slotNodes = [];
     List<AstNode> queueNodes = [];
 
+    // print("app name [${app.fullname}]");
+
     bool canUseIfElement = internal && app.name == InternalNodes.NodeList;
 
     for (var attr in attrs) {
-      if (isStatementIf(attr) || isStatementElse(attr) || isXDMLHost(attr))
-        continue;
+      if (isStatementIf(attr) ||
+          isStatementElse(attr) ||
+          isStatementElseIf(attr) ||
+          isXDMLHost(attr)) continue;
       var insert = isInsertBind(attr)
           ? attr.value
           : parseInsertExpression(attr.value).value;
       attrNodes.add(createNamedParamByAttr(attr.name, insert));
     }
 
-    List<TempPayload> slotTreeNodes = [];
-    List<TempPayload> queueTreeNodes = [];
+    List<IfElsePayload> slotTreeNodes = [];
+    List<IfElsePayload> queueTreeNodes = [];
 
     for (var child in children) {
       // print("${child.fullname}");
@@ -246,53 +265,69 @@ class XDMLNodeFactory {
           slots.firstWhere((sl) => sl.index == childIdx, orElse: () => null);
       var isSlotNode = result != null && !internal;
       if (!isSlotNode) {
-        queueTreeNodes.add(new TempPayload(child, result, childIdx));
+        queueTreeNodes.add(new IfElsePayload(child, result, childIdx));
       } else {
-        slotTreeNodes.add(new TempPayload(child, result, childIdx));
+        slotTreeNodes.add(new IfElsePayload(child, result, childIdx));
       }
     }
 
+    // print(canUseIfElement);
+    // print("start normalize turns1");
     var turn1 = normalizeIfElseOfNodes(queueTreeNodes, canUseIfElement);
+    // print("start normalize turns2");
     var turn2 = normalizeIfElseOfNodes(slotTreeNodes, false);
 
-    // print("start resolve turns");
-
+    // print("start resolve turns1");
     for (var turn in turn1) {
-      if (turn.type == TurnType.node) {
+      if (turn.type == IfElseType.node) {
         queueNodes
             .add(createNormalParamByChildNode(attrs, turn.payload[0].node));
       } else {
         var ifChild = turn.payload[0].node;
-        var elseChild = turn.payload.length > 1 ? turn.payload[1].node : null;
+        List<IfElsePayload> afterChildren =
+            turn.payload.length > 1 ? turn.payload.sublist(1) : [];
         var ifAttr = ifChild.attrs
             .firstWhere((i) => isStatementIf(i), orElse: () => null);
         var condition = createStringLiteral(ifAttr.value);
-        var then = createNormalParamByChildNode(attrs, ifChild);
-        var elseNode = elseChild == null
-            ? null
-            : createNormalParamByChildNode(attrs, elseChild);
-        if (turn.type == TurnType.element) {
-          queueNodes.add(fac.ifElement(
-              condition: condition, thenElement: then, elseElement: elseNode));
-        } else {
-          queueNodes.add(fac.conditionalExpression(condition,
-              new SimpleToken(TokenType.QUESTION, 0), then, null, elseNode));
-        }
+        var thenExpression = createNormalParamByChildNode(attrs, ifChild);
+        var elseExpression = createIfStatementElse(
+            attrs, afterChildren.map((f) => f.node).toList(),
+            useEle: canUseIfElement);
+        queueNodes.add(canUseIfElement
+            ? fac.ifElement(
+                condition: condition,
+                thenElement: thenExpression,
+                elseElement: elseExpression)
+            : fac.conditionalExpression(
+                condition,
+                new SimpleToken(TokenType.QUESTION, 0),
+                thenExpression,
+                null,
+                elseExpression));
       }
     }
 
     // print("start resolve turns2");
 
     for (var turn in turn2) {
-      if (turn.type == TurnType.node) {
-        slotNodes.add(createSlotChildNode(children, turn.payload[0].slot, app));
+      if (turn.type == IfElseType.node) {
+        // print("visti slot node [${turn.payload[0].node.fullname}]");
+        slotNodes.add(createSlotChildNode(
+            children, turn.payload[0].slot, turn.payload[0].node));
       } else {
-        var ifChild = turn.payload[0];
-        var elseChild = turn.payload.length > 1 ? turn.payload[1].node : null;
-        var ifAttr = ifChild.node.attrs
+        // print("visti slot if-else [${turn.payload[0].node.fullname}]");
+        // print(turn.payload.map((f) => f.node.fullname).join("-"));
+        var ifChild = turn.payload[0].node;
+        List<IfElsePayload> afterChildren =
+            turn.payload.length > 1 ? turn.payload.sublist(1) : [];
+        var ifAttr = ifChild.attrs
             .firstWhere((i) => isStatementIf(i), orElse: () => null);
-        slotNodes.add(createSlotChildNode(children, ifChild.slot, app,
-            elseNode: elseChild, ifStatement: ifAttr));
+        var elseExpression = createIfStatementElse(
+            attrs, afterChildren.map((f) => f.node).toList(),
+            useEle: false);
+        slotNodes.add(createSlotChildNode(
+            children, turn.payload[0].slot, ifChild,
+            elseExpression: elseExpression, ifStatement: ifAttr));
       }
     }
 
@@ -307,16 +342,64 @@ class XDMLNodeFactory {
     return content;
   }
 
+  CollectionElement createIfStatementElse(
+      List<AttributeNode> attrs, List<ComponentTreeNode> children,
+      {bool useEle = false}) {
+    // print(children.length);
+    if (children.isNotEmpty) {
+      if (children.length > 1) {
+        var ifChild = children.elementAt(0);
+        var afterChildren = children.sublist(1);
+        var thenExpression = createNormalParamByChildNode(attrs, ifChild);
+        var elseExpression =
+            createIfStatementElse(attrs, afterChildren, useEle: useEle);
+        var esleIfAttr = ifChild.attrs
+            .firstWhere((i) => isStatementElseIf(i), orElse: () => null);
+        var condition = createStringLiteral(esleIfAttr.value);
+        return useEle
+            ? fac.ifElement(
+                condition: condition,
+                thenElement: thenExpression,
+                elseElement: elseExpression)
+            : fac.conditionalExpression(
+                condition,
+                new SimpleToken(TokenType.QUESTION, 0),
+                thenExpression,
+                null,
+                elseExpression);
+      } else {
+        var ifChild = children.elementAt(0);
+        var esleIfAttr = ifChild.attrs
+            .firstWhere((i) => isStatementElseIf(i), orElse: () => null);
+        var condition =
+            esleIfAttr != null ? createStringLiteral(esleIfAttr.value) : null;
+        var thenExpression = createNormalParamByChildNode(attrs, ifChild);
+        return (useEle && condition != null)
+            ? fac.ifElement(
+                condition: condition,
+                thenElement: thenExpression,
+                elseElement: null)
+            : createNormalParamByChildNode(attrs, children.elementAt(0));
+      }
+    } else {
+      return null;
+    }
+  }
+
   NamedExpression createSlotChildNode(
       List<ComponentTreeNode> children, SlotNode result, ComponentTreeNode app,
-      {ComponentTreeNode elseNode, AttributeNode ifStatement}) {
+      {ComponentTreeNode elseNode,
+      Expression elseExpression,
+      AttributeNode ifStatement}) {
     var targetChild = findSlotChildNode(children, result);
     if (targetChild == null) {
       throw UnsupportedError(
           "generate tree node failed -> node ${app.fullname}'s slot [${result.target}] not found");
     }
     return createNamedParamByChildNode(result.target, targetChild,
-        elseNode: elseNode, ifStatement: ifStatement);
+        elseNode: elseNode,
+        elseExpression: elseExpression,
+        ifStatement: ifStatement);
   }
 
   ComponentTreeNode findSlotChildNode(
@@ -328,16 +411,18 @@ class XDMLNodeFactory {
 
   AstNode createNormalParamByChildNode(
       Iterable<AttributeNode> attrs, ComponentTreeNode targetChild) {
+    // print("[createNormalParamByChildNode] - [${app.fullname}]");
     return generateTree(app: targetChild);
   }
 
   NamedExpression createNamedParamByChildNode(
       String slotName, ComponentTreeNode targetChild,
       {ComponentTreeNode elseNode,
+      Expression elseExpression,
       AttributeNode ifStatement,
       bool useIfElement}) {
     Expression finalExp;
-    if (elseNode == null) {
+    if (elseNode == null && elseExpression == null) {
       var result = generateTree(app: targetChild);
       if (result is! Expression) {
         throw UnsupportedError(
@@ -346,7 +431,7 @@ class XDMLNodeFactory {
       finalExp = result;
     } else {
       var nodeIf = generateTree(app: targetChild);
-      var nodeElse = generateTree(app: elseNode);
+      var nodeElse = elseExpression ?? generateTree(app: elseNode);
       if (nodeIf is! Expression) {
         throw UnsupportedError(
             "generate nodeIf node error : nodeIf's realType is [${nodeIf.runtimeType}] but not [Expression]");
@@ -360,7 +445,7 @@ class XDMLNodeFactory {
           new SimpleToken(TokenType.QUESTION, 0),
           generateTree(app: targetChild),
           null,
-          generateTree(app: elseNode));
+          nodeElse);
     }
     return fac.namedExpression(
         fac.label(
@@ -450,78 +535,166 @@ class XDMLNodeFactory {
     return content;
   }
 
-  List<Turn> normalizeIfElseOfNodes(
-      List<TempPayload> payloads, bool canUseIfElement) {
-    List<Turn> turns = [];
+  List<IfElseSection> normalizeIfElseOfNodes(
+      List<IfElsePayload> payloads, bool canUseIfElement) {
+    List<IfElseSection> turns = [];
+    List<IfElsePayload> tempList = [];
+    // print("payload length [${payloads.length}]");
     for (var idx = 0; idx < payloads.length; idx++) {
-      // print("start step ${idx + 1}");
-      var item = payloads[idx];
-      var child = item.node;
-      var ifIdx = child.attrs.indexWhere((i) => isStatementIf(i));
-      if (ifIdx >= 0) {
-        // print("${item.node.fullname} - if");
-        item.isIf = true;
-      }
-      var elseIdx = child.attrs.indexWhere((i) => isStatementElse(i));
-      if (elseIdx >= 0) {
-        // print("${item.node.fullname} - else");
-        item.isElse = true;
-      }
-      if (idx > 0) {
-        var previousItem = payloads[idx - 1];
-        if (previousItem.isIf && !previousItem.isSelf) {
-          if (!canUseIfElement && !item.isElse) {
-            throw UnsupportedError(
-                "generate tree node failed -> statement 'if' can't exist without statement 'else'");
-          }
-          if (canUseIfElement && !item.isElse) {
-            previousItem.isIfElement = true;
-            continue;
-          }
-          previousItem.isIfStatement = true;
-        }
-      }
-    }
-    for (var idx = 0; idx < payloads.length; idx++) {
-      // print(idx);
-      var payload = payloads[idx];
-      if (payload.isSelf) {
-        var node = payload.node;
-        var elseNode = node.attrs
-            .firstWhere((i) => isStatementElse(i), orElse: () => null);
-        var newEscape = new ComponentTreeNode(
-            true,
-            InternalNodes.EscapeText,
-            /** 暂时不处理，需要改 */ null,
-            XDML,
-            [],
-            [],
-            elseNode?.value,
-            node.parent);
-        turns.add(
-            new Turn([payload, new TempPayload(newEscape, payload.slot, -1)])
-              ..type = TurnType.statement);
+      var item = checkItemIfElse(payloads[idx]);
+      if (item.isIf || item.isElseIf || item.isElse) {
+        tempList.add(item);
+      } else {
+        turns.add(new IfElseSection([item])..type = IfElseType.node);
         continue;
       }
-      if (payload.isIfStatement) {
-        var payloadNext = payloads[idx + 1];
-        turns.add(new Turn([payload, payloadNext])..type = TurnType.statement);
-        idx++;
-        continue;
-      }
-      if (payload.isIfElement) {
-        var payloadNext = payloads[idx + 1];
-        if (payloadNext.isElse) {
-          turns.add(new Turn([payload, payloadNext])..type = TurnType.element);
+      // 下一个node可能将要触发close语句
+      if ((item.isIf || item.isElseIf) &&
+          !item.isElse &&
+          idx < payloads.length - 1) {
+        var nextItem = checkItemIfElse(payloads[idx + 1]);
+        // print(
+        //     "[${nextItem.node.fullname}:${nextItem.node.innerText ?? '..'}] - not-statement[${nextItem.isNotStatement}] - is-else[${nextItem.isElse}]");
+        if (nextItem.isElse) {
+          tempList.add(nextItem);
+          var newTurn = collectIfStatements(tempList, canUseIfElement);
+          if (newTurn != null) {
+            turns.add(newTurn);
+            tempList = [];
+          }
           idx++;
-        } else {
-          turns.add(new Turn([payload])..type = TurnType.element);
+          continue;
         }
-        continue;
+        if (nextItem.isNotStatement || nextItem.isIf) {
+          var newTurn = collectIfStatements(tempList, canUseIfElement);
+          if (newTurn != null) {
+            turns.add(newTurn);
+            tempList = [];
+          }
+          continue;
+        }
       }
-      turns.add(new Turn([payload])..type = TurnType.node);
     }
     return turns;
+  }
+
+  IfElseSection collectIfStatements(
+      List<IfElsePayload> tempList, bool canUseIfElement) {
+    for (var tdx = 0; tdx < tempList.length; tdx++) {
+      var crt = tempList[tdx];
+      // 自关闭node，不存在前node，直接处理
+      if (tdx == 0 && crt.isSelf) {
+        // print(crt.node.fullname + " with self close");
+        return createSelfStatement([crt]);
+      }
+      // 不是第一个元素，存在前node
+      if (tdx > 0) {
+        var pre = tempList[tdx - 1];
+        // 前一个node是if，且没有关闭
+        // 假如当前node依然是if，语法错误
+        if ((pre.isIf || pre.isElseIf) &&
+            !pre.isSelf &&
+            crt.isIf &&
+            !canUseIfElement) {
+          throw UnsupportedError(
+              "generate if logic failed -> statement 'if' or 'esle-if' can't exist with next 'if'");
+        }
+        if (tdx == tempList.length - 1) {
+          // print(tempList.map((f) => f.node.fullname).join("-"));
+          return createSelfStatement(tempList);
+        }
+      }
+    }
+    return null;
+  }
+
+  IfElsePayload checkItemIfElse(IfElsePayload item) {
+    var child = item.node;
+    item.isIf = child.attrs.indexWhere((i) => isStatementIf(i)) >= 0;
+    item.isElse = child.attrs.indexWhere((i) => isStatementElse(i)) >= 0;
+    item.isElseIf = child.attrs.indexWhere((i) => isStatementElseIf(i)) >= 0;
+    return item;
+  }
+
+  IfElseSection createSelfStatement(List<IfElsePayload> payloads) {
+    List<IfElsePayload> results = [];
+    if (payloads.isEmpty) return new IfElseSection([]);
+    if (payloads.length == 1) {
+      var first = payloads.first;
+      var hasIf = first.node.attrs
+              .firstWhere((t) => isStatementIf(t), orElse: () => null) !=
+          null;
+      if (!hasIf) {
+        return new IfElseSection(results)..type = IfElseType.node;
+      }
+      var attrElse = first.node.attrs
+          .firstWhere((t) => isStatementElse(t), orElse: () => null);
+      first.useAsIf = true;
+      results.add(first);
+      if (attrElse != null) {
+        var last = new IfElsePayload(
+            new ComponentTreeNode(
+                true,
+                InternalNodes.EscapeText,
+                /** 暂时不处理，需要改 */ null,
+                XDML,
+                [],
+                [],
+                attrElse.value,
+                first.node.parent),
+            first.slot,
+            first.childIndex);
+        last.useAsElse = true;
+        results.add(last);
+      }
+      return new IfElseSection(results)..type = IfElseType.statement;
+    } else {
+      var first = payloads.first;
+      var last = payloads.last;
+      List<IfElsePayload> contents =
+          payloads.length > 2 ? payloads.sublist(1, payloads.length - 1) : [];
+      first.useAsIf = true;
+      results.add(first);
+      for (var child in contents) {
+        var hasElseIf = child.node.attrs
+                .firstWhere((t) => isStatementElseIf(t), orElse: () => null) !=
+            null;
+        if (hasElseIf) {
+          child.useAsElseIf = true;
+          results.add(child);
+        }
+      }
+      var attrElseIf = last.node.attrs
+          .firstWhere((t) => isStatementElseIf(t), orElse: () => null);
+      var attrElse = last.node.attrs
+          .firstWhere((t) => isStatementElse(t), orElse: () => null);
+      if (attrElseIf != null) {
+        last.useAsElseIf = true;
+        results.add(last);
+        if (attrElse != null &&
+            (attrElse.value == null || attrElse.value == "")) {
+          var preLast = new IfElsePayload(
+              new ComponentTreeNode(
+                  true,
+                  InternalNodes.EscapeText,
+                  /** ��时不处理，需要改 */ null,
+                  XDML,
+                  [],
+                  [],
+                  attrElse.value,
+                  last.node.parent),
+              last.slot,
+              last.childIndex);
+          preLast.useAsElse = true;
+          results.add(preLast);
+        }
+      } else {
+        last.useAsElseIf = false;
+        last.useAsElse = true;
+        results.add(last);
+      }
+      return new IfElseSection(results)..type = IfElseType.statement;
+    }
   }
 
   StringToken createStringToken(String value) {

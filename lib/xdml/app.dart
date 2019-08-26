@@ -135,3 +135,7 @@ bool isStatementIf(AttributeNode t) {
 bool isStatementElse(AttributeNode t) {
   return t.nsUri == XDML && t.name == "else";
 }
+
+bool isStatementElseIf(AttributeNode t) {
+  return t.nsUri == XDML && t.name == "else-if";
+}
