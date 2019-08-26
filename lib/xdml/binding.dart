@@ -8,6 +8,8 @@ import 'package:front_end/src/scanner/token.dart';
 import 'base.dart';
 import 'app.dart';
 
+// final PARAMS_REG = new RegExp("([^\r,\.]*\r*)([^\r,\.]+)");
+
 class IfElsePayload {
   ComponentTreeNode node;
   SlotNode slot;
@@ -152,8 +154,22 @@ class XDMLNodeFactory {
     // List<FormalParameter> paramNameds = [];
     for (var attr in attrs) {
       // print(attr.name);
-      if (attr.name.startsWith("pass-")) {
-        var paramName = attr.name.replaceAll("pass-", "");
+      if (attr.name.startsWith("params")) {
+        var value = (attr.value == null || attr.value == "") ? "" : attr.value;
+        var parameters = value.split(",").map((i) => i.trim());
+        for (var param in parameters) {
+          var tv = param.split(" ").map((i) => i.trim());
+          if (tv.isNotEmpty) {
+            params.add(fac.simpleFormalParameter2(
+                type: fac.typeName(
+                    createIdentifier(tv.length > 1 ? tv.first : "dynamic"),
+                    null),
+                identifier: createIdentifier(tv.last)));
+          }
+        }
+      }
+      if (attr.name.startsWith("param-")) {
+        var paramName = attr.name.replaceAll("param-", "");
         var paramType =
             (attr.value == null || attr.value == "") ? "dynamic" : attr.value;
         params.add(fac.simpleFormalParameter2(
@@ -186,8 +202,20 @@ class XDMLNodeFactory {
   BlockFunctionBody createViewGeneratorBody(ComponentTreeNode host) {
     if (host.name != XDMLNodes.ViewBuilder) return null;
     List<VariableDeclarationList> declarations = [];
+    List<Statement> executions = [];
     var attrs = host.attrs;
     for (var attr in attrs) {
+      if (attr.name == "vars") {
+        var value = (attr.value == null || attr.value == "") ? "" : attr.value;
+        var vars = value.split(";").map((i) => i.trim());
+        for (var variable in vars) {
+          if (!variable.startsWith("var")) variable = "var " + variable.trim();
+          if (variable.endsWith(";"))
+            variable = variable.substring(0, variable.length - 1);
+          executions
+              .add(fac.expressionStatement(createIdentifier(variable), null));
+        }
+      }
       if (attr.name.startsWith("var-")) {
         var paramName = attr.name.replaceAll("var-", "");
         var expression = attr.value;
@@ -202,7 +230,6 @@ class XDMLNodeFactory {
     var variableStatements =
         declarations.map((s) => fac.variableDeclarationStatement(s, null));
     var result = insertCommonNode(host.internal, [], host.children, [], host);
-    List<Statement> executions = [];
     Expression returnExpression;
     for (var item in result) {
       // print(item.runtimeType);
