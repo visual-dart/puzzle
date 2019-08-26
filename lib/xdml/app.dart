@@ -1,8 +1,6 @@
 import 'dart:core';
-
-import 'package:xml/xml.dart' as xml;
-
 import 'base.dart';
+import 'vnode.dart';
 
 class AttributeNode {
   bool internal = false;
@@ -57,11 +55,11 @@ class ComponentTreeNode {
 }
 
 ComponentTreeNode resolveApp(List<DartReference> references,
-    Map<String, String> namespaces, xml.XmlNode appRoot) {
+    Map<String, String> namespaces, VNode appRoot) {
   var internal = false;
-  if (appRoot is xml.XmlElement) {
-    var rootName = appRoot.name.local;
-    var nsUri = appRoot.name.namespaceUri;
+  if (appRoot is VNodeElement) {
+    var rootName = appRoot.name;
+    var nsUri = appRoot.ns;
     var hasNs = namespaces.containsKey(nsUri);
     var rootNs = namespaces[nsUri];
     if (nsUri == XDML) {
@@ -69,15 +67,14 @@ ComponentTreeNode resolveApp(List<DartReference> references,
     }
     // print("${hasNs ? "$rootNs:" : ""}$rootName");
     // 内置节点类型
-    appRoot.normalize();
-    var attrs = appRoot.attributes
-        .map((attr) => createAttribute(attr, namespaces))
-        .toList();
-    var isText = rootName == "Text" && !hasNs;
+    var attrs =
+        appRoot.attrs.map((attr) => createAttribute(attr, namespaces)).toList();
+    var isText = (rootName == "Text" && !hasNs) ||
+        (rootName == InternalNodes.Execution && nsUri == XDML);
     List<ComponentTreeNode> children = isText
         ? []
         : appRoot.children
-            .where((n) => n is xml.XmlElement)
+            .where((n) => n is VNodeElement)
             .map((i) => resolveApp(references, namespaces, i))
             .toList();
     var node = new ComponentTreeNode(
@@ -87,7 +84,7 @@ ComponentTreeNode resolveApp(List<DartReference> references,
         hasNs ? nsUri : null,
         attrs,
         [],
-        isText ? appRoot.children.elementAt(0).toString() : null,
+        isText ? appRoot.children.elementAt(0).value : null,
         null);
     for (var c in children) {
       c.parent = node;
@@ -100,17 +97,16 @@ ComponentTreeNode resolveApp(List<DartReference> references,
     node.children = children;
     return node;
   }
-  if (appRoot is xml.XmlText) {
-    return new ComponentTreeNode(true, "EscapeText", null, null, [], [],
-        "'${appRoot.toString()}'", null);
+  if (appRoot is VNodeString) {
+    return new ComponentTreeNode(
+        true, "EscapeText", null, null, [], [], "'${appRoot.value}'", null);
   }
   return null;
 }
 
-AttributeNode createAttribute(
-    xml.XmlAttribute attr, Map<String, String> namespaces) {
-  var attrName = attr.name.local;
-  var attrNsUri = attr.name.namespaceUri;
+AttributeNode createAttribute(VNodeAttr attr, Map<String, String> namespaces) {
+  var attrName = attr.name;
+  var attrNsUri = attr.ns;
   var hasAttrNs = namespaces.containsKey(attrNsUri);
   return new AttributeNode(
       attrNsUri == XDML || attrNsUri == BIND,
