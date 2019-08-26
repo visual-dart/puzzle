@@ -8,14 +8,25 @@ final FLUTTER = "https://github.com/flutter/flutter/wiki";
 final XDML = "https://github.com/miao17game/xdml/wiki/xdml";
 final BIND = "https://github.com/miao17game/xdml/wiki/bind";
 
-class InternalNodes {
-  static const PartialView = "ViewUnit";
-  static const PartialViewFn = "ViewGenerator";
+/** XDML内置节点 */
+class XDMLNodes {
+  /** 视图单元 */
+  static const ViewUnit = "ViewUnit";
+  /** 视图函数 */
+  static const ViewBuilder = "ViewBuilder";
+  /** 导入声明 */
   static const Import = "Import";
-  static const ReferenceGroup = "Reference";
+  /** 引用集合 */
+  static const ReferenceGroup = "ReferenceGroup";
+  /** 节点数组 */
   static const NodeList = "NodeList";
+  /** 根页面 */
   static const Page = "Page";
+  /** 逃逸字符串，不被插值解析 */
   static const EscapeText = "EscapeText";
+  /** 表达式文本，被插值解析 */
+  static const ExpressionText = "ExpressionText";
+  /** 可执行代码行 */
   static const Execution = "Execution";
 }
 
@@ -65,7 +76,7 @@ DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
   File xdml = new File(xdmlPath);
   var xmlDocument = parse(xdml.readAsStringSync());
   var mains =
-      xmlDocument.findElements(InternalNodes.Page, namespace: XDML).toList();
+      xmlDocument.findElements(XDMLNodes.Page, namespace: XDML).toList();
   if (mains == null || mains.isEmpty) {
     throw new UnsupportedError(
         "resolve xdml $viewPath file failed => XDML Page declaration not found");
@@ -97,13 +108,13 @@ DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
   }
 
   var refNodes = main.children
-      .where((i) => i.name == InternalNodes.ReferenceGroup && i.ns == XDML);
+      .where((i) => i.name == XDMLNodes.ReferenceGroup && i.ns == XDML);
   if (refNodes != null && refNodes.isNotEmpty) {
     var refRoot = refNodes.elementAt(0);
     refRoot.children.where((e) => e is VNodeElement).forEach((child) {
       VNodeElement thisNode = child;
       if (thisNode.ns != XDML) return;
-      if (thisNode.name == InternalNodes.Import) {
+      if (thisNode.name == XDMLNodes.Import) {
         var childAttrs = thisNode.attrs;
         var pathUri =
             childAttrs.firstWhere((i) => i.name == "path", orElse: () => null);
@@ -210,12 +221,12 @@ VNodeAttr getTemplateRefName(VNode ele) {
 
 bool isXDMLPartialView(VNode ele) {
   return ele is VNodeElement &&
-      ele.name == InternalNodes.PartialView &&
+      ele.name == XDMLNodes.ViewUnit &&
       ele.ns == XDML;
 }
 
 bool isXDMLPartialGenerator(VNode ele) {
   return ele is VNodeElement &&
-      ele.name == InternalNodes.PartialViewFn &&
+      ele.name == XDMLNodes.ViewBuilder &&
       ele.ns == XDML;
 }

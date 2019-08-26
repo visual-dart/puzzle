@@ -41,13 +41,14 @@ class ComponentTreeNode {
   List<SlotNode> slots = [];
   String innerText = null;
   ComponentTreeNode(this.internal, this.name, this.ns, this.nsUri, this.attrs,
-      this.children, this.innerText, this.parent);
+      this.children, this.parent);
 
   String get fullname => ns == null ? name : "${ns}:${name}";
 
   ComponentTreeNode fork() {
     return new ComponentTreeNode(
-        internal, name, ns, nsUri, [], [], innerText, parent?.fork())
+        internal, name, ns, nsUri, [], [], parent?.fork())
+      ..innerText = innerText
       ..attrs = attrs.map((a) => a.fork()).toList()
       ..slots = slots.map((a) => a.fork()).toList()
       ..children = children.map((a) => a.fork()).toList();
@@ -65,23 +66,11 @@ ComponentTreeNode resolveApp(List<DartReference> references,
     if (nsUri == XDML) internal = true;
     var attrs =
         appRoot.attrs.map((attr) => createAttribute(attr, namespaces)).toList();
-    var isText = appRoot.children.length == 1 &&
-        appRoot.children.elementAt(0) is VNodeString;
-    List<ComponentTreeNode> children = isText
-        ? []
-        : appRoot.children
-            .where((n) => n is VNodeElement)
-            .map((i) => resolveApp(references, namespaces, i))
-            .toList();
-    var node = new ComponentTreeNode(
-        internal,
-        rootName,
-        hasNs ? rootNs : null,
-        hasNs ? nsUri : null,
-        attrs,
-        [],
-        isText ? appRoot.children.elementAt(0).value : null,
-        null);
+    List<ComponentTreeNode> children = appRoot.children
+        .map((i) => resolveApp(references, namespaces, i))
+        .toList();
+    var node = new ComponentTreeNode(internal, rootName, hasNs ? rootNs : null,
+        hasNs ? nsUri : null, attrs, [], null);
     for (var c in children) {
       c.parent = node;
       var idx = children.indexOf(c);
@@ -94,8 +83,9 @@ ComponentTreeNode resolveApp(List<DartReference> references,
     return node;
   }
   if (appRoot is VNodeString) {
-    return new ComponentTreeNode(true, InternalNodes.EscapeText, null, null, [],
-        [], "'${appRoot.value}'", null);
+    return new ComponentTreeNode(
+        true, XDMLNodes.ExpressionText, null, null, [], [], null)
+      ..innerText = appRoot.value;
   }
   return null;
 }

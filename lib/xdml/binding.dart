@@ -110,14 +110,18 @@ class XDMLNodeFactory {
   AstNode generateTree({ComponentTreeNode app, String subName}) {
     var host = app ?? this.app;
 
-    if (host.name == InternalNodes.EscapeText) {
-      return createEscapeText(host.innerText);
+    if (host.name == XDMLNodes.Execution) {
+      return fac.expressionStatement(
+          createIdentifier((host.children.elementAt(0).innerText)), null);
     }
-    if (host.name == InternalNodes.Execution) {
-      return fac.expressionStatement(createIdentifier((host.innerText)), null);
-    }
-    if (host.name == InternalNodes.PartialViewFn) {
+    if (host.name == XDMLNodes.ViewBuilder) {
       return createViewGeneratorExpression(host);
+    }
+    if (host.name == XDMLNodes.EscapeText) {
+      return createIdentifier(host.innerText);
+    }
+    if (host.name == XDMLNodes.ExpressionText) {
+      return createIdentifier(parseInsertExpression(host.innerText).value);
     }
 
     var internal = host.internal;
@@ -125,14 +129,13 @@ class XDMLNodeFactory {
     var children = host.children;
     var slots = host.slots;
     var commonAttrs = internal ? <AttributeNode>[] : attrs;
-    var content = host.innerText != null
-        ? insertTextNode(host.innerText)
-        : insertCommonNode(internal, commonAttrs, children, slots, host);
+    var content =
+        insertCommonNode(internal, commonAttrs, children, slots, host);
 
-    if (host.name == InternalNodes.NodeList) {
+    if (host.name == XDMLNodes.NodeList) {
       return createNodeList(attrs, content);
     }
-    if (host.name == InternalNodes.PartialView) {
+    if (host.name == XDMLNodes.ViewUnit) {
       return createFunctionInvokation(host, content);
     }
     if (!internal) {
@@ -143,7 +146,7 @@ class XDMLNodeFactory {
   }
 
   FormalParameterList createViewGeneratorParams(ComponentTreeNode host) {
-    if (host.name != InternalNodes.PartialViewFn) return null;
+    if (host.name != XDMLNodes.ViewBuilder) return null;
     var attrs = host.attrs;
     List<FormalParameter> params = [];
     // List<FormalParameter> paramNameds = [];
@@ -181,7 +184,7 @@ class XDMLNodeFactory {
   }
 
   BlockFunctionBody createViewGeneratorBody(ComponentTreeNode host) {
-    if (host.name != InternalNodes.PartialViewFn) return null;
+    if (host.name != XDMLNodes.ViewBuilder) return null;
     List<VariableDeclarationList> declarations = [];
     var attrs = host.attrs;
     for (var attr in attrs) {
@@ -242,7 +245,7 @@ class XDMLNodeFactory {
 
     // print("app name [${app.fullname}]");
 
-    bool canUseIfElement = internal && app.name == InternalNodes.NodeList;
+    bool canUseIfElement = internal && app.name == XDMLNodes.NodeList;
 
     for (var attr in attrs) {
       if (isStatementIf(attr) ||
@@ -474,10 +477,6 @@ class XDMLNodeFactory {
     return fac.listLiteral(null, typeList, null, list, null);
   }
 
-  SimpleIdentifier createEscapeText(String text) {
-    return createIdentifier(text);
-  }
-
   FunctionExpressionInvocation createFunctionInvokation(
       ComponentTreeNode host, List<dynamic> content) {
     // fix type mismatch
@@ -635,13 +634,13 @@ class XDMLNodeFactory {
         var last = new IfElsePayload(
             new ComponentTreeNode(
                 true,
-                InternalNodes.EscapeText,
+                XDMLNodes.EscapeText,
                 /** 暂时不处理，需要改 */ null,
                 XDML,
                 [],
                 [],
-                attrElse.value,
-                first.node.parent),
+                first.node.parent)
+              ..innerText = attrElse.value,
             first.slot,
             first.childIndex);
         last.useAsElse = true;
@@ -676,13 +675,13 @@ class XDMLNodeFactory {
           var preLast = new IfElsePayload(
               new ComponentTreeNode(
                   true,
-                  InternalNodes.EscapeText,
+                  XDMLNodes.EscapeText,
                   /** ��时不处理，需要改 */ null,
                   XDML,
                   [],
                   [],
-                  attrElse.value,
-                  last.node.parent),
+                  last.node.parent)
+                ..innerText = attrElse.value,
               last.slot,
               last.childIndex);
           preLast.useAsElse = true;
