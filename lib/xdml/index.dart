@@ -97,7 +97,8 @@ BindingRelation createXdmlBinding(
       var node = entry.value;
       var xdmlFac = new XDMLNodeFactory(node.host, null, invokeParams: []);
       var fac = xdmlFac.fac;
-      var rendered = xdmlFac.generateViewFn(node.host);
+      // var rendered = xdmlFac.generateViewFn(node.host);
+      var rendered = xdmlFac.generateTree();
       gens.add(fac.variableDeclaration(
           fac.simpleIdentifier(new StringToken(TokenType.STRING, name, 0)),
           null,

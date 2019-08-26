@@ -1,7 +1,7 @@
 # youzan
-# entry: ../../../../GIT/fe-assets/assets-flutter/example
+entry: ../../../../GIT/fe-assets/assets-flutter/example
 # home
-entry: ../../../../youzan/fe-assets/assets-flutter/example
+# entry: ../../../../youzan/fe-assets/assets-flutter/example
 group: com.example.demo
 watch: true
 throwOnError: true

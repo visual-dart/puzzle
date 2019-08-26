@@ -50,6 +50,10 @@ class XDMLNodeFactory {
       String contextName,
       String contextType}) {
     var content = generateTree();
+    if (content is! Expression) {
+      throw UnsupportedError(
+          "generate content error : content's realType is [${content.runtimeType}] but not [Expression]");
+    }
     List<Statement> statements = [];
     if (variables != null && variables.isNotEmpty) {
       var variableDeclarations = <VariableDeclaration>[]
@@ -90,145 +94,115 @@ class XDMLNodeFactory {
             fac.blockFunctionBody(null, null, createBlock(statements))));
   }
 
-  Expression generateTree({ComponentTreeNode app, String subName}) {
+  AstNode generateTree({ComponentTreeNode app, String subName}) {
     var host = app ?? this.app;
+
+    if (host.name == InternalNodes.EscapeText) {
+      return createEscapeText(host.innerText);
+    }
+    if (host.name == InternalNodes.Execution) {
+      return fac.expressionStatement(createIdentifier((host.innerText)), null);
+    }
+    if (host.name == InternalNodes.PartialViewFn) {
+      return createViewGeneratorExpression(host);
+    }
+
     var internal = host.internal;
     var attrs = host.attrs.where((i) => !isXDMLSlot(i)).toList();
     var children = host.children;
     var slots = host.slots;
     var commonAttrs = internal ? <AttributeNode>[] : attrs;
-
-    List<dynamic> content = host.innerText != null
+    var content = host.innerText != null
         ? insertTextNode(host.innerText)
         : insertCommonNode(internal, commonAttrs, children, slots, host);
 
-    if (!internal) {
-      return createFunctionInvokation(host, content);
-    }
     if (host.name == InternalNodes.NodeList) {
       return createNodeList(attrs, content);
     }
-    if (host.name == InternalNodes.EscapeText) {
-      return createEscapeText(host.innerText);
-    }
     if (host.name == InternalNodes.PartialView) {
+      return createFunctionInvokation(host, content);
+    }
+    if (!internal) {
       return createFunctionInvokation(host, content);
     }
     throw UnsupportedError(
         "parse tree node failed -> unsupport node ${host.fullname}");
   }
 
-  FunctionExpression generateViewFn(ComponentTreeNode host) {
-    // print(host.name);
-    if (host.name == InternalNodes.PartialViewFn) {
-      var attrs = host.attrs;
-      List<VariableDeclarationList> declarations = [];
-      List<FormalParameter> params = [];
-      // List<FormalParameter> paramNameds = [];
-      for (var attr in attrs) {
-        // print(attr.name);
-        if (attr.name.startsWith("pass-")) {
-          var paramName = attr.name.replaceAll("pass-", "");
-          var paramType = attr.value;
-          params.add(fac.simpleFormalParameter2(
-              type: fac.typeName(createIdentifier(paramType), null),
-              identifier: createIdentifier(paramName)));
-          continue;
-        }
-        if (attr.name.startsWith("namedPass-")) {
-          // var paramNames = attr.name.replaceAll("namedPass-", "").split("-");
-          // var paramType = attr.value;
-          // String sourceName;
-          // sourceName = paramNames.elementAt(0);
-          // paramNameds.add(fac.fieldFormalParameter2(
-          //     thisKeyword: null,
-          //     period: null,
-          //     identifier: createIdentifier(sourceName),
-          //     type: fac.typeName(createIdentifier(paramType), null)));
-          // continue;
-        }
-        if (attr.name.startsWith("var-")) {
-          var paramName = attr.name.replaceAll("var-", "");
-          var expression = attr.value;
-          declarations.add(fac.variableDeclarationList(
-              null, null, new KeywordToken(Keyword.VAR, 0), null, [
-            fac.variableDeclaration(createIdentifier(paramName), null,
-                createStringLiteral(expression))
-          ]));
-          continue;
-        }
+  FormalParameterList createViewGeneratorParams(ComponentTreeNode host) {
+    if (host.name != InternalNodes.PartialViewFn) return null;
+    var attrs = host.attrs;
+    List<FormalParameter> params = [];
+    // List<FormalParameter> paramNameds = [];
+    for (var attr in attrs) {
+      // print(attr.name);
+      if (attr.name.startsWith("pass-")) {
+        var paramName = attr.name.replaceAll("pass-", "");
+        var paramType = attr.value;
+        params.add(fac.simpleFormalParameter2(
+            type: fac.typeName(createIdentifier(paramType), null),
+            identifier: createIdentifier(paramName)));
+        continue;
       }
-      var variableStatements =
-          declarations.map((s) => fac.variableDeclarationStatement(s, null));
-      var children = host.children;
-      if (children.isEmpty) {
-        throw UnsupportedError(
-            "create view generator failed -> children nodes not found");
+      // 命名参数暂不支持实现
+      if (attr.name.startsWith("namedPass-")) {
+        // var paramNames = attr.name.replaceAll("namedPass-", "").split("-");
+        // var paramType = attr.value;
+        // String sourceName;
+        // sourceName = paramNames.elementAt(0);
+        // paramNameds.add(fac.fieldFormalParameter2(
+        //     thisKeyword: null,
+        //     period: null,
+        //     identifier: createIdentifier(sourceName),
+        //     type: fac.typeName(createIdentifier(paramType), null)));
+        // continue;
       }
-      List<ComponentTreeNode> childNodes = [];
-      List<ExpressionStatement> executions = [];
-      for (var i in children) {
-        if (i.nsUri == XDML && i.name == InternalNodes.Execution) {
-          executions.add(
-              fac.expressionStatement(createIdentifier((i.innerText)), null));
-        } else {
-          childNodes.add(i);
-        }
-      }
-      Expression result;
-      if (childNodes.length == 1) {
-        var node = children.elementAt(0);
-        result = createFunctionInvokation(node, []);
-      } else {
-        var nodeThis = childNodes.elementAt(0);
-        var nodeNext = childNodes.elementAt(1);
-        var ifNode;
-        var elseNode;
-        var attrIf = getStatementIf(nodeThis);
-        if (attrIf == null) {
-          throw UnsupportedError(
-              "create view generator failed -> render node's count should be only one");
-        } else {
-          var isString = attrIf.value;
-          var attrElse = getStatementElse(nodeThis);
-          if (attrElse != null) {
-            ifNode = generateTree(app: nodeThis);
-            elseNode = createIdentifier(attrElse.value);
-            result = fac.conditionalExpression(
-                createStringLiteral(isString), null, ifNode, null, elseNode);
-          } else {
-            var attrElse = getStatementElse(nodeNext);
-            if (attrElse == null) {
-              throw UnsupportedError(
-                  "create view generator failed -> no else node found");
-            }
-            ifNode = generateTree(app: nodeThis);
-            elseNode = generateTree(app: nodeNext);
-            result = fac.conditionalExpression(
-                createStringLiteral(isString), null, ifNode, null, elseNode);
-          }
-        }
-      }
-      var resurnStatement = fac.returnStatement(
-          new KeywordToken(Keyword.RETURN, 0), result, null);
-      return fac.functionExpression(
-          null,
-          fac.formalParameterList(
-              null,
-              <FormalParameter>[]..addAll(params) /*..addAll(paramNameds)*/,
-              new SimpleToken(TokenType.OPEN_CURLY_BRACKET, 0),
-              new SimpleToken(TokenType.CLOSE_CURLY_BRACKET, 0),
-              null),
-          fac.blockFunctionBody(
-              null,
-              null,
-              createBlock(<Statement>[]
-                ..addAll(variableStatements)
-                ..addAll(executions)
-                ..add(resurnStatement))));
-    } else {
-      return null;
     }
+    return fac.formalParameterList(
+        null,
+        <FormalParameter>[]..addAll(params) /*..addAll(paramNameds)*/,
+        new SimpleToken(TokenType.OPEN_CURLY_BRACKET, 0),
+        new SimpleToken(TokenType.CLOSE_CURLY_BRACKET, 0),
+        null);
+  }
+
+  BlockFunctionBody createViewGeneratorBody(ComponentTreeNode host) {
+    if (host.name != InternalNodes.PartialViewFn) return null;
+    List<VariableDeclarationList> declarations = [];
+    var attrs = host.attrs;
+    for (var attr in attrs) {
+      if (attr.name.startsWith("var-")) {
+        var paramName = attr.name.replaceAll("var-", "");
+        var expression = attr.value;
+        declarations.add(fac.variableDeclarationList(
+            null, null, new KeywordToken(Keyword.VAR, 0), null, [
+          fac.variableDeclaration(createIdentifier(paramName), null,
+              createStringLiteral(expression))
+        ]));
+        continue;
+      }
+    }
+    var variableStatements =
+        declarations.map((s) => fac.variableDeclarationStatement(s, null));
+    var result = insertCommonNode(host.internal, [], host.children, [], host);
+    List<Statement> executions = [];
+    Expression returnExpression;
+    for (var item in result) {
+      if (result.indexOf(item) == result.length - 1 && item is Expression) {
+        returnExpression = item;
+      } else if (item is Statement) {
+        executions.add(item);
+      }
+    }
+    var resurnStatement = fac.returnStatement(
+        new KeywordToken(Keyword.RETURN, 0), returnExpression, null);
+    return fac.blockFunctionBody(
+        null,
+        null,
+        createBlock(<Statement>[]
+          ..addAll(variableStatements)
+          ..addAll(executions)
+          ..add(resurnStatement)));
   }
 
   bool isIfElseAttrNode(ComponentTreeNode i) {
@@ -352,7 +326,7 @@ class XDMLNodeFactory {
         orElse: () => null);
   }
 
-  Expression createNormalParamByChildNode(
+  AstNode createNormalParamByChildNode(
       Iterable<AttributeNode> attrs, ComponentTreeNode targetChild) {
     return generateTree(app: targetChild);
   }
@@ -362,17 +336,36 @@ class XDMLNodeFactory {
       {ComponentTreeNode elseNode,
       AttributeNode ifStatement,
       bool useIfElement}) {
+    Expression finalExp;
+    if (elseNode == null) {
+      var result = generateTree(app: targetChild);
+      if (result is! Expression) {
+        throw UnsupportedError(
+            "generate namedResult node error : namedResult's realType is [${result.runtimeType}] but not [Expression]");
+      }
+      finalExp = result;
+    } else {
+      var nodeIf = generateTree(app: targetChild);
+      var nodeElse = generateTree(app: elseNode);
+      if (nodeIf is! Expression) {
+        throw UnsupportedError(
+            "generate nodeIf node error : nodeIf's realType is [${nodeIf.runtimeType}] but not [Expression]");
+      }
+      if (nodeElse is! Expression) {
+        throw UnsupportedError(
+            "generate nodeElse node error : nodeElse's realType is [${nodeElse.runtimeType}] but not [Expression]");
+      }
+      finalExp = fac.conditionalExpression(
+          createStringLiteral(ifStatement.value),
+          new SimpleToken(TokenType.QUESTION, 0),
+          generateTree(app: targetChild),
+          null,
+          generateTree(app: elseNode));
+    }
     return fac.namedExpression(
         fac.label(
             createIdentifier(slotName), new SimpleToken(TokenType.COLON, 0)),
-        elseNode == null
-            ? generateTree(app: targetChild)
-            : fac.conditionalExpression(
-                createStringLiteral(ifStatement.value),
-                new SimpleToken(TokenType.QUESTION, 0),
-                generateTree(app: targetChild),
-                null,
-                generateTree(app: elseNode)));
+        finalExp);
   }
 
   ListLiteral createNodeList(List<AttributeNode> attrs, List<dynamic> content) {
@@ -417,6 +410,11 @@ class XDMLNodeFactory {
             new StringToken(TokenType.IDENTIFIER, host.fullname, 0)),
         null,
         fac.argumentList(null, list, null));
+  }
+
+  FunctionExpression createViewGeneratorExpression(ComponentTreeNode host) {
+    return fac.functionExpression(
+        null, createViewGeneratorParams(host), createViewGeneratorBody(host));
   }
 
   InsertResult parseInsertExpression(String expression) {
