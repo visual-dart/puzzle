@@ -247,4 +247,4 @@ watch: true
 
 In **android studio**, everything is ok.
 
-If you're useing **vscode**, you have to click hot-reload button to fresh your app manually after file changed.
+If you're using **vscode**, you have to click hot-reload button to fresh your app manually after file changed.
