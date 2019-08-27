@@ -34,7 +34,7 @@ thre is a demo:
             <Text x:slot="title">{{
                 'Welcome to Flutter'
                 + ' '
-                + bind:i = platformVersion
+                + bind:instance = platformVersion
                 + bind:i = titleText
             }}</Text>
         </AppBar>
@@ -56,7 +56,7 @@ thre is a demo:
     <!-- Host -->
     <MaterialApp
             x:host="build"
-            bind:title="titleText">
+            title="{{ bind:i = titleText }}">
         <Scaffold
                 x:slot="home"
                 bind:appBar="appBarTpl">
@@ -92,13 +92,14 @@ thre is a demo:
                         x:slot="children"
                         type="Widget">
                     <x:Virtual._rule value="a is Map<dynamic, dynamic> && a.containsKey('b')" />
-                    <Text x:if="bind:v = _rule">{{ a['b'] + '2#232#' }}</Text>
+                    <Text x:if="bind:virtual = _rule">{{ a['b'] + '2#232#' }}</Text>
                     <Text x:else-if="a == 55">yyyyyyyyyyyy</Text>
                     <Text x:else-if="a == 556">tttttttttttt</Text>
                     <Text x:else-if="a == 999">rrrrrrrrrrrr</Text>
                     <Text x:else-if="a == 876">qqqqqqqqqq</Text>
                     <Text x:if="bind:v = _rule">wwwwwwwwww</Text>
                     <Text x:else-if="a == 5">eeeeeeeeeeeee</Text>
+                    <Text x:else="">{{ fuckYou }}</Text>
                     <Text>{{ fuckYou }}</Text>
                 </x:NodeList>
             </Column>
@@ -172,8 +173,8 @@ generated automatically:
 import 'package:flutter/material.dart';
 import 'main.dart';
 
-Widget bindXDML(MyAppState __instance, BuildContext context, dynamic a,
-    dynamic list, dynamic titleText) {
+Widget bindXDML(
+    MyAppState __instance, BuildContext context, dynamic a, dynamic list) {
   var appBarTpl = AppBar(
       title: Text('Welcome to Flutter' +
           ' ' +
@@ -189,7 +190,7 @@ Widget bindXDML(MyAppState __instance, BuildContext context, dynamic a,
     return index % 2 == 0 ? Text('123456') : Text('654321');
   };
   return MaterialApp(
-      title: titleText,
+      title: __instance.titleText,
       home: Scaffold(
           appBar: appBarTpl,
           body: a == null
@@ -223,7 +224,9 @@ Widget bindXDML(MyAppState __instance, BuildContext context, dynamic a,
                                   a.containsKey('b'))
                                 Text('wwwwwwwwww')
                               else if (a == 5)
-                                Text('eeeeeeeeeeeee'),
+                                Text('eeeeeeeeeeeee')
+                              else
+                                Text(fuckYou),
                               Text(fuckYou)
                             ])));
 }
