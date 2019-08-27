@@ -1,7 +1,5 @@
-# youzan
-entry: ../../../../GIT/fe-assets/assets-flutter/example
-# home
-# entry: ../../../../youzan/fe-assets/assets-flutter/example
+# demo-project
+entry: ../../xdml-demo/example/lib
 group: com.example.demo
 watch: true
 throwOnError: true
