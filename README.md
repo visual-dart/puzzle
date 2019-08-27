@@ -2,12 +2,12 @@
 
 Use `xdml` for developing visual dart/flutter app.
 
-## install
+## Install
 
 1. add `xdml` into your `pubspec.yaml`
 2. run `flutter packages get`
 
-## usage
+## Usage
 
 thre is a demo:
 
@@ -228,5 +228,23 @@ Widget bindXDML(MyAppState __instance, BuildContext context, dynamic a,
                             ])));
 }
 
-
 ```
+
+## Compile and watch
+
+1. add an config.yaml into your project
+
+```yaml
+entry: lib
+group: com.your.owner.group.name
+watch: true
+```
+
+2. run command `packages pub run xdml --config=config.yaml`
+3. now check binding files.
+
+## Work with hot reload
+
+In **android studio**, everything is ok.
+
+If you're useing **vscode**, you have to click hot-reload button to fresh your app manually after file changed.
