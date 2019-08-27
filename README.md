@@ -20,7 +20,7 @@ thre is a demo:
         xmlns:x="https://github.com/visual-dart/xdml/wiki/xdml"
         xmlns:bind="https://github.com/visual-dart/xdml/wiki/bind"
         xmlns:flutter="https://github.com/flutter/flutter/wiki"
-        path="./demo.dart"
+        path="main.dart"
         class="MyAppState">
 
     <!-- ReferenceGroup -->
