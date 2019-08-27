@@ -9,7 +9,7 @@ Use `xdml` for developing visual dart/flutter app.
 
 ## Usage
 
-thre is a demo:
+thre is a [Demo](https://github.com/visual-dart/xdml-demo):
 
 > main.xaml
 
