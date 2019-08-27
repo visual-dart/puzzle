@@ -5,8 +5,8 @@ import 'app.dart';
 import 'vnode.dart';
 
 final FLUTTER = "https://github.com/flutter/flutter/wiki";
-final XDML = "https://github.com/miao17game/xdml/wiki/xdml";
-final BIND = "https://github.com/miao17game/xdml/wiki/bind";
+final XDML = "https://github.com/visual-dart/xdml/wiki/xdml";
+final BIND = "https://github.com/visual-dart/xdml/wiki/bind";
 
 /** XDML内置节点 */
 class XDMLNodes {
