@@ -8,7 +8,7 @@ import 'package:front_end/src/scanner/token.dart';
 import 'base.dart';
 import 'app.dart';
 
-// final PARAMS_REG = new RegExp("([^\r,\.]*\r*)([^\r,\.]+)");
+final VBIND_REG = new RegExp(r"^\s*v:bind\s*=\s*(\w+)\s*$");
 
 class IfElsePayload {
   ComponentTreeNode node;
@@ -65,7 +65,7 @@ class XDMLNodeFactory {
       String contextName,
       String contextType}) {
     var content = generateTree();
-    if (content is! Expression) {
+    if (content != null && content is! Expression) {
       throw UnsupportedError(
           "generate content error : content's realType is [${content.runtimeType}] but not [Expression]");
     }
@@ -112,6 +112,10 @@ class XDMLNodeFactory {
   AstNode generateTree({ComponentTreeNode app, String subName}) {
     var host = app ?? this.app;
 
+    if (isVirtualVariableNode(host)) {
+      insertParentVirtualVariable(host);
+      return null;
+    }
     if (host.name == XDMLNodes.Execution) {
       return fac.expressionStatement(
           createIdentifier((host.children.elementAt(0).innerText)), null);
@@ -145,6 +149,21 @@ class XDMLNodeFactory {
     }
     throw UnsupportedError(
         "parse tree node failed -> unsupport node ${host.fullname}");
+  }
+
+  void insertParentVirtualVariable(ComponentTreeNode host) {
+    if (host.parent != null) {
+      var names = host.name.split(".");
+      var vname = names.length > 1
+          ? names.last
+          : host.attrs
+              .firstWhere((i) => i.name == "ref", orElse: () => null)
+              ?.value;
+      var expression =
+          host.attrs.firstWhere((i) => i.name == "value", orElse: () => null);
+      host.parent.virtualVbs
+          .add(new VirtualVariableNode(vname, expression?.value));
+    }
   }
 
   FormalParameterList createViewGeneratorParams(ComponentTreeNode host) {
@@ -250,16 +269,6 @@ class XDMLNodeFactory {
           ..add(resurnStatement)));
   }
 
-  bool isIfElseAttrNode(ComponentTreeNode i) {
-    return (getStatementIf(i) != null) || (getStatementElse(i) != null);
-  }
-
-  AttributeNode getStatementElse(ComponentTreeNode i) =>
-      i.attrs.firstWhere((i) => isStatementElse(i), orElse: () => null);
-
-  AttributeNode getStatementIf(ComponentTreeNode i) =>
-      i.attrs.firstWhere((i) => isStatementIf(i), orElse: () => null);
-
   List<AstNode> insertCommonNode(
       bool internal,
       List<AttributeNode> attrs,
@@ -310,15 +319,16 @@ class XDMLNodeFactory {
     // print("start resolve turns1");
     for (var turn in turn1) {
       if (turn.type == IfElseType.node) {
-        queueNodes
-            .add(createNormalParamByChildNode(attrs, turn.payload[0].node));
+        var node = createNormalParamByChildNode(attrs, turn.payload[0].node);
+        if (node != null) queueNodes.add(node);
       } else {
         var ifChild = turn.payload[0].node;
         List<IfElsePayload> afterChildren =
             turn.payload.length > 1 ? turn.payload.sublist(1) : [];
         var ifAttr = ifChild.attrs
             .firstWhere((i) => isStatementIf(i), orElse: () => null);
-        var condition = createStringLiteral(ifAttr.value);
+        var condition =
+            createStringLiteral(resolveVBindExpression(ifChild, ifAttr));
         var thenExpression = createNormalParamByChildNode(attrs, ifChild);
         var elseExpression = createIfStatementElse(
             attrs, afterChildren.map((f) => f.node).toList(),
@@ -370,6 +380,28 @@ class XDMLNodeFactory {
       content.add(slot);
     }
     return content;
+  }
+
+  String resolveVBindExpression(ComponentTreeNode node, AttributeNode ifAttr) {
+    bool is_vbind = false;
+    var vbind_value;
+    var conditionStr = ifAttr.value.replaceAllMapped(VBIND_REG, (matched) {
+      if (matched is RegExpMatch) {
+        var value = matched.group(1);
+        if (value != null && node.parent != null) {
+          var match_vb = node.parent.virtualVbs
+              .firstWhere((i) => i.ref == value, orElse: () => null);
+          if (match_vb != null) {
+            is_vbind = true;
+            vbind_value = match_vb.expression;
+          }
+        }
+        return matched.input;
+      } else {
+        return matched.input;
+      }
+    });
+    return is_vbind ? vbind_value : conditionStr;
   }
 
   CollectionElement createIfStatementElse(
@@ -454,7 +486,7 @@ class XDMLNodeFactory {
     Expression finalExp;
     if (elseNode == null && elseExpression == null) {
       var result = generateTree(app: targetChild);
-      if (result is! Expression) {
+      if (result != null && result is! Expression) {
         throw UnsupportedError(
             "generate namedResult node error : namedResult's realType is [${result.runtimeType}] but not [Expression]");
       }
@@ -462,18 +494,18 @@ class XDMLNodeFactory {
     } else {
       var nodeIf = generateTree(app: targetChild);
       var nodeElse = elseExpression ?? generateTree(app: elseNode);
-      if (nodeIf is! Expression) {
+      if (nodeIf != null && nodeIf is! Expression) {
         throw UnsupportedError(
             "generate nodeIf node error : nodeIf's realType is [${nodeIf.runtimeType}] but not [Expression]");
       }
-      if (nodeElse is! Expression) {
+      if (nodeElse != null && nodeElse is! Expression) {
         throw UnsupportedError(
             "generate nodeElse node error : nodeElse's realType is [${nodeElse.runtimeType}] but not [Expression]");
       }
       finalExp = fac.conditionalExpression(
-          createStringLiteral(ifStatement.value),
+          createStringLiteral(resolveVBindExpression(targetChild, ifStatement)),
           new SimpleToken(TokenType.QUESTION, 0),
-          generateTree(app: targetChild),
+          nodeIf,
           null,
           nodeElse);
     }
@@ -608,7 +640,7 @@ class XDMLNodeFactory {
       List<IfElsePayload> tempList, bool canUseIfElement) {
     for (var tdx = 0; tdx < tempList.length; tdx++) {
       var crt = tempList[tdx];
-      // 自关闭node，不存在前node，直接处理
+      // 自��闭node，不存在前node，直接处理
       if (tdx == 0 && crt.isSelf) {
         // print(crt.node.fullname + " with self close");
         return createSelfStatement([crt]);

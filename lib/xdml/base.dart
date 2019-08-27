@@ -28,6 +28,10 @@ class XDMLNodes {
   static const ExpressionText = "ExpressionText";
   /** 可执行代码行 */
   static const Execution = "Execution";
+  /** 临时变量上下文，承载临时虚拟变量表达式 */
+  static const VirtualContext = "Virtual";
+  /** 临时变量，不具备独立输出的能力，只能在条件语句中插值 */
+  static const VirtualVariable = "VirtualVariable";
 }
 
 bool isInternalNs(String namespaceUri) {
@@ -228,5 +232,12 @@ bool isXDMLPartialView(VNode ele) {
 bool isXDMLPartialGenerator(VNode ele) {
   return ele is VNodeElement &&
       ele.name == XDMLNodes.ViewBuilder &&
+      ele.ns == XDML;
+}
+
+bool isVirtualVariable(VNode ele) {
+  return ele is VNodeElement &&
+      (ele.name.startsWith(XDMLNodes.VirtualContext) ||
+          ele.name == XDMLNodes.VirtualVariable) &&
       ele.ns == XDML;
 }

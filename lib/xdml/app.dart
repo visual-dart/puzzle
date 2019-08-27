@@ -30,6 +30,12 @@ class SlotNode {
   }
 }
 
+class VirtualVariableNode {
+  String ref;
+  String expression;
+  VirtualVariableNode(this.ref, this.expression);
+}
+
 class ComponentTreeNode {
   bool internal = false;
   String ns = null;
@@ -40,6 +46,7 @@ class ComponentTreeNode {
   List<AttributeNode> attrs = [];
   List<SlotNode> slots = [];
   String innerText = null;
+  List<VirtualVariableNode> virtualVbs = [];
   ComponentTreeNode(this.internal, this.name, this.ns, this.nsUri, this.attrs,
       this.children, this.parent);
 
@@ -124,4 +131,10 @@ bool isStatementElse(AttributeNode t) {
 
 bool isStatementElseIf(AttributeNode t) {
   return t.nsUri == XDML && t.name == "else-if";
+}
+
+bool isVirtualVariableNode(ComponentTreeNode node) {
+  return (node.name.startsWith(XDMLNodes.VirtualContext) ||
+          node.name == XDMLNodes.VirtualVariable) &&
+      node.nsUri == XDML;
 }
