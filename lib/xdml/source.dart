@@ -26,7 +26,7 @@ CompilationUnitMember wrapBuildMethod(CompilationUnitMember i, String className,
     ReturnStatement returnState = returns.elementAt(0);
 
     var newArguments = [
-      /* fac.simpleIdentifier(new StringToken(TokenType.STRING, "this", 0)), */
+      fac.simpleIdentifier(new StringToken(TokenType.STRING, "this", 0)),
       fac.simpleIdentifier(new StringToken(TokenType.STRING, "context", 0)),
     ];
     variables.forEach((vb) {
@@ -59,8 +59,6 @@ CompilationUnitMember wrapBuildMethod(CompilationUnitMember i, String className,
         buildFn.externalKeyword,
         buildFn.modifierKeyword,
         buildFn.returnType,
-        // fac.typeName(
-        //     fac.simpleIdentifier(new KeywordToken(Keyword.DYNAMIC, 0)), null),
         buildFn.propertyKeyword,
         buildFn.operatorKeyword,
         buildFn.name,

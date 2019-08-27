@@ -56,6 +56,9 @@ BindingRelation createXdmlBinding(
     splitDirectives(sourceFile, imports, partDirecs, libDirecs, otherDirecs);
     decideImportDirectives(references, namespaces, imports, importsNeedAdd);
 
+    // add import for main dart file
+    importsNeedAdd.add(new DartReference(null, paths.sourceName, null));
+
     for (var item in importsNeedAdd) {
       // print(item.toString());
       createImportDirective(importsBindingAdd, fac, item);

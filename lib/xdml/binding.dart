@@ -8,7 +8,12 @@ import 'package:front_end/src/scanner/token.dart';
 import 'base.dart';
 import 'app.dart';
 
-final VBIND_REG = new RegExp(r"^\s*v:bind\s*=\s*(\w+)\s*$");
+final VBIND_REG = new RegExp(r"\s*(bind:virtual|bind:v)\s*=\s*(\w+)\s*");
+final CBIND_REG = new RegExp(r"\s*(bind:instance|bind:i)\s*=\s*(\w+)\s*");
+final INSERT_REG = new RegExp(r"({{\r*([^}{]+)\r*}})");
+
+final INSTANCE_NAME = "__instance";
+final BUILD_CTX_TYPE = "BuildContext";
 
 class IfElsePayload {
   ComponentTreeNode node;
@@ -94,12 +99,15 @@ class XDMLNodeFactory {
               null,
               invokeParams.map((i) {
                 var paramName = i.name;
+                var isInstance = paramName == "this";
                 var isContext = paramName == (contextName ?? "context");
-                var typeName =
-                    isContext ? (contextType ?? "BuildContext") : "dynamic";
+                var typeName = isContext
+                    ? (contextType ?? BUILD_CTX_TYPE)
+                    : isInstance ? (className ?? "dynamic") : "dynamic";
                 var param = fac.simpleFormalParameter2(
                     type: fac.typeName(createIdentifier(typeName), null),
-                    identifier: createIdentifier(paramName));
+                    identifier: createIdentifier(
+                        isInstance ? INSTANCE_NAME : paramName));
                 return param;
               }).toList(),
               null,
@@ -327,8 +335,8 @@ class XDMLNodeFactory {
             turn.payload.length > 1 ? turn.payload.sublist(1) : [];
         var ifAttr = ifChild.attrs
             .firstWhere((i) => isStatementIf(i), orElse: () => null);
-        var condition =
-            createStringLiteral(resolveVBindExpression(ifChild, ifAttr));
+        var condition = createStringLiteral(
+            resolveConditionBindExpression(ifChild, ifAttr));
         var thenExpression = createNormalParamByChildNode(attrs, ifChild);
         var elseExpression = createIfStatementElse(
             attrs, afterChildren.map((f) => f.node).toList(),
@@ -382,18 +390,20 @@ class XDMLNodeFactory {
     return content;
   }
 
-  String resolveVBindExpression(ComponentTreeNode node, AttributeNode ifAttr) {
+  String resolveConditionBindExpression(
+      ComponentTreeNode node, AttributeNode ifAttr) {
     bool is_vbind = false;
-    var vbind_value;
-    var conditionStr = ifAttr.value.replaceAllMapped(VBIND_REG, (matched) {
+    String bind_value;
+    var conditionStr = ifAttr.value;
+    conditionStr.replaceAllMapped(VBIND_REG, (matched) {
       if (matched is RegExpMatch) {
-        var value = matched.group(1);
+        var value = matched.group(2);
         if (value != null && node.parent != null) {
           var match_vb = node.parent.virtualVbs
               .firstWhere((i) => i.ref == value, orElse: () => null);
           if (match_vb != null) {
             is_vbind = true;
-            vbind_value = match_vb.expression;
+            bind_value = match_vb.expression;
           }
         }
         return matched.input;
@@ -401,7 +411,24 @@ class XDMLNodeFactory {
         return matched.input;
       }
     });
-    return is_vbind ? vbind_value : conditionStr;
+    if (!is_vbind) {
+      conditionStr = resolveControllerBinding(conditionStr);
+    }
+    return is_vbind ? bind_value : conditionStr;
+  }
+
+  String resolveControllerBinding(String expression) {
+    return expression.replaceAllMapped(CBIND_REG, (matched) {
+      if (matched is RegExpMatch) {
+        var value = matched.group(2);
+        if (value != null) {
+          return "$INSTANCE_NAME." + value;
+        }
+        return matched.input;
+      } else {
+        return matched.input;
+      }
+    });
   }
 
   CollectionElement createIfStatementElse(
@@ -503,7 +530,8 @@ class XDMLNodeFactory {
             "generate nodeElse node error : nodeElse's realType is [${nodeElse.runtimeType}] but not [Expression]");
       }
       finalExp = fac.conditionalExpression(
-          createStringLiteral(resolveVBindExpression(targetChild, ifStatement)),
+          createStringLiteral(
+              resolveConditionBindExpression(targetChild, ifStatement)),
           new SimpleToken(TokenType.QUESTION, 0),
           nodeIf,
           null,
@@ -562,9 +590,9 @@ class XDMLNodeFactory {
 
   InsertResult parseInsertExpression(String expression) {
     var valid = false;
-    var reg = new RegExp("({{\r*([^}{]+)\r*}})");
-    // print("input $expression --> matched:${reg.hasMatch(expression)}");
-    var newExpression = expression.replaceAllMapped(reg, (matched) {
+    var tempExpre = resolveControllerBinding(expression);
+    // print("input $tempExpre --> matched:${INSERT_REG.hasMatch(tempExpre)}");
+    var newExpression = tempExpre.replaceAllMapped(INSERT_REG, (matched) {
       if (matched is RegExpMatch) {
         if (valid == false) valid = true;
         // var insertExp = matched.group(1);
