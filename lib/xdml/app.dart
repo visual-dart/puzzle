@@ -4,8 +4,8 @@ import 'vnode.dart';
 
 class AttributeNode {
   bool internal = false;
-  String ns = null;
-  String nsUri = null;
+  String ns;
+  String nsUri;
   String name;
   String value;
   AttributeNode(this.internal, this.name, this.ns, this.nsUri, this.value);
@@ -18,8 +18,8 @@ class AttributeNode {
 }
 
 class SlotNode {
-  String ns = null;
-  String nsUri = null;
+  String ns;
+  String nsUri;
   String target;
   String value;
   int index;
@@ -38,14 +38,14 @@ class VirtualVariableNode {
 
 class ComponentTreeNode {
   bool internal = false;
-  String ns = null;
-  String nsUri = null;
+  String ns;
+  String nsUri;
   String name;
-  ComponentTreeNode parent = null;
+  ComponentTreeNode parent;
   List<ComponentTreeNode> children = [];
   List<AttributeNode> attrs = [];
   List<SlotNode> slots = [];
-  String innerText = null;
+  String innerText;
   List<VirtualVariableNode> virtualVbs = [];
   ComponentTreeNode(this.internal, this.name, this.ns, this.nsUri, this.attrs,
       this.children, this.parent);

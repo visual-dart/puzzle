@@ -1,7 +1,7 @@
 import 'dart:core';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/ast_factory.dart';
-import 'package:analyzer/Src/dart/ast/ast_factory.dart';
+import 'package:analyzer/src/dart/ast/ast_factory.dart';
 import 'package:analyzer/src/dart/ast/token.dart';
 import 'package:front_end/src/scanner/token.dart';
 
@@ -19,9 +19,11 @@ class IfElsePayload {
   bool isIf = false;
   bool isElse = false;
   bool isElseIf = false;
-  /** if声明语句，在语法块中使用 */
+
+  /// if声明语句，在语法块中使用
   bool isIfStatement = false;
-  /** if元素语句，可以在List中使用 */
+
+  /// if元素语句，可以在List中使用
   bool isIfElement = false;
 
   bool useAsIf = false;
@@ -30,10 +32,10 @@ class IfElsePayload {
 
   IfElsePayload(this.node, this.slot, this.childIndex);
 
-  /** 自关闭if声明 */
+  /// 自关闭if声明
   bool get isSelf => isElse && (isIf || isElseIf);
 
-  /** 非if声明 */
+  /// 非if声明
   bool get isNotStatement => !isIf && !isElse && !isElseIf;
 }
 

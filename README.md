@@ -243,7 +243,7 @@ group: com.your.owner.group.name
 watch: true
 ```
 
-2. run command `packages pub run xdml --config=config.yaml`
+2. run command `flutter packages pub run xdml --config=config.yaml`
 3. now check binding files.
 
 ## Work with hot reload

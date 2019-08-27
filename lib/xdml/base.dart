@@ -8,29 +8,39 @@ final FLUTTER = "https://github.com/flutter/flutter/wiki";
 final XDML = "https://github.com/visual-dart/xdml/wiki/xdml";
 final BIND = "https://github.com/visual-dart/xdml/wiki/bind";
 
-/** XDML内置节点 */
+/// XDML内置节点
 class XDMLNodes {
-  /** 视图单元 */
+  /// 视图单元
   static const ViewUnit = "ViewUnit";
-  /** 视图函数 */
+
+  /// 视图函数
   static const ViewBuilder = "ViewBuilder";
-  /** 导入声明 */
+
+  /// 导入声明
   static const Import = "Import";
-  /** 引用集合 */
+
+  /// 引用集合
   static const ReferenceGroup = "ReferenceGroup";
-  /** 节点数组 */
+
+  /// 节点数组
   static const NodeList = "NodeList";
-  /** 根页面 */
+
+  /// 根页面
   static const Page = "Page";
-  /** 逃逸字符串，不被插值解析 */
+
+  /// 逃逸字符串，不被插值解析
   static const EscapeText = "EscapeText";
-  /** 表达式文本，被插值解析 */
+
+  /// 表达式文本，被插值解析
   static const ExpressionText = "ExpressionText";
-  /** 可执行代码行 */
+
+  /// 可执行代码行
   static const Execution = "Execution";
-  /** 临时变量上下文，承载临时虚拟变量表达式 */
+
+  /// 临时变量上下文，承载临时虚拟变量表达式
   static const VirtualContext = "Virtual";
-  /** 临时变量，不具备独立输出的能力，只能在条件语句中插值 */
+
+  /// 临时变量，不具备独立输出的能力，只能在条件语句中插值
   static const VirtualVariable = "VirtualVariable";
 }
 
@@ -144,7 +154,7 @@ DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
   } else if (childrenNodes.length > 1) {
     for (var ele in childrenNodes) {
       if (isXDMLPartialView(ele)) {
-        // print(local);
+        /// print(local);
         var refName = getTemplateRefName(ele);
         if (refName != null && ele.children.isNotEmpty) {
           templateRefs.add(mapElementNode(ele, refName));
@@ -158,7 +168,8 @@ DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
         continue;
       }
       var attrs = ele.attrs;
-      // 不要重复查找host
+
+      /// 不要重复查找host
       var hostBuild = appRoot != null ? null : getHostBuildNode(attrs);
       if (hostBuild != null) {
         appRoot = ele;
@@ -189,7 +200,8 @@ DocumentParesResult parseXmlDocument(String xdmlPath, String viewPath) {
     var ele = tpl["element"];
     var name = tpl["name"];
     if (ele == null || name == null) continue;
-    // print(ele);
+
+    /// print(ele);
     result.addGenerator(name, resolveApp(references, namespaces, ele));
   }
 
@@ -218,9 +230,8 @@ VNodeElement getFirstElement(VNodeElement ele) {
 }
 
 VNodeAttr getTemplateRefName(VNode ele) {
-  // x：前缀不必要
-  return ele.attrs.firstWhere((i) => /* i.ns == XDML &&*/ i.name == "ref",
-      orElse: () => null);
+  /// x：前缀不必要
+  return ele.attrs.firstWhere((i) => i.name == "ref", orElse: () => null);
 }
 
 bool isXDMLPartialView(VNode ele) {

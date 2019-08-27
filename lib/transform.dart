@@ -6,7 +6,7 @@ typedef void OnHandle({String viewPath, dynamic sourceFile, String className});
 class BuildTransformer extends RecursiveAstVisitor<dynamic> {
   AstNode node;
   OnHandle handler;
-  BuildTransformer(this.node, this.handler) {}
+  BuildTransformer(this.node, this.handler);
 
   call() {
     node.visitChildren(this);
