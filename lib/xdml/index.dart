@@ -81,38 +81,15 @@ BindingRelation createXdmlBinding(
             }))
         .toList();
 
-    List<VariableDeclaration> tpls = [];
-    for (var entry in templates.entries) {
-      var name = entry.key;
-      var node = entry.value;
-      var xdmlFac = new XDMLNodeFactory(node.host, null, invokeParams: []);
-      var fac = xdmlFac.fac;
-      var rendered = xdmlFac.generateTree();
-      tpls.add(fac.variableDeclaration(
-          fac.simpleIdentifier(new StringToken(TokenType.STRING, name, 0)),
-          null,
-          rendered));
-    }
+    var variables =
+        compilePageComponents(templates, generators, namespaces, references);
 
-    List<VariableDeclaration> gens = [];
-    for (var entry in generators.entries) {
-      var name = entry.key;
-      var node = entry.value;
-      var xdmlFac = new XDMLNodeFactory(node.host, null, invokeParams: []);
-      var fac = xdmlFac.fac;
-      var rendered = xdmlFac.generateTree();
-      gens.add(fac.variableDeclaration(
-          fac.simpleIdentifier(new StringToken(TokenType.STRING, name, 0)),
-          null,
-          rendered));
-    }
-
-    var buildFn = new XDMLNodeFactory(application, className,
-            invokeParams: invokeParams)
-        .generateFn(
-            variables: (<VariableDeclaration>[])..addAll(tpls)..addAll(gens));
-    refreshBindingFile(paths, formatter, importsBindingAdd, buildFn,
-        templates: tpls);
+    var buildFn = XDMLNodeFactory.create(application, className,
+            invokeParams: invokeParams,
+            namespaces: namespaces,
+            references: references)
+        .generateFn(variables: variables);
+    refreshBindingFile(paths, formatter, importsBindingAdd, buildFn);
 
     var newSourceFile =
         updateSpurceFile(fac, sourceFile, newDirectives, newDeclarations);
@@ -135,9 +112,34 @@ BindingRelation createXdmlBinding(
   }
 }
 
+List<VariableDeclaration> compilePageComponents(
+    Map<String, ElementParesResult> templates,
+    Map<String, ElementParesResult> generators,
+    Map<String, String> namespaces,
+    List<DartReference> references) {
+  Iterable<MapEntry<String, ElementParesResult>> entries = []
+    ..addAll(templates.entries)
+    ..addAll(generators.entries);
+
+  List<VariableDeclaration> variables = [];
+
+  for (var entry in entries) {
+    var name = entry.key;
+    var node = entry.value;
+    var xdmlFac = XDMLNodeFactory.create(node.host, null,
+        invokeParams: [], namespaces: namespaces, references: references);
+    var fac = xdmlFac.fac;
+    var rendered = xdmlFac.generateTree();
+    variables.add(fac.variableDeclaration(
+        fac.simpleIdentifier(new StringToken(TokenType.STRING, name, 0)),
+        null,
+        rendered));
+  }
+  return variables;
+}
+
 void refreshBindingFile(Paths paths, dartfmt.DartFormatter formatter,
-    List<Directive> imports, FunctionDeclaration buildFn,
-    {List<VariableDeclaration> templates}) {
+    List<Directive> imports, FunctionDeclaration buildFn) {
   File bindingFile = new File(paths.realView);
 
   List<AstNode> list = [];

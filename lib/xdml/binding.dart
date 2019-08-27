@@ -8,10 +8,6 @@ import 'package:front_end/src/scanner/token.dart';
 import 'base.dart';
 import 'app.dart';
 
-final VBIND_REG = new RegExp(r"\s*(bind:virtual|bind:v)\s*=\s*(\w+)\s*");
-final CBIND_REG = new RegExp(r"\s*(bind:instance|bind:i)\s*=\s*(\w+)\s*");
-final INSERT_REG = new RegExp(r"({{\r*([^}{]+)\r*}})");
-
 final INSTANCE_NAME = "__instance";
 final BUILD_CTX_TYPE = "BuildContext";
 
@@ -61,8 +57,22 @@ class XDMLNodeFactory {
   ComponentTreeNode app;
   String className;
   List<SimpleIdentifier> invokeParams = [];
+  List<DartReference> references = [];
+  Map<String, String> namespaces = {};
 
-  XDMLNodeFactory(this.app, this.className, {this.invokeParams});
+  RegExp VIRTUAL_BIND_REG;
+  RegExp INSTANCE_BIND_REG;
+  RegExp INSERT_EXPRESSION_REG;
+
+  XDMLNodeFactory.create(this.app, this.className,
+      {this.invokeParams, this.references, this.namespaces = const {}}) {
+    var bind = namespaces.containsKey(BIND) ? namespaces[BIND] : "bind";
+    var bindv = "$bind:virtual|$bind:v";
+    var bindi = "$bind:instance|$bind:i";
+    VIRTUAL_BIND_REG = new RegExp(r"\s*(" + bindv + r")\s*=\s*(\w+)\s*");
+    INSTANCE_BIND_REG = new RegExp(r"\s*(" + bindi + r")\s*=\s*(\w+)\s*");
+    INSERT_EXPRESSION_REG = new RegExp(r"({{\r*([^}{]+)\r*}})");
+  }
 
   FunctionDeclaration generateFn(
       {Iterable<VariableDeclaration> variables,
@@ -395,7 +405,7 @@ class XDMLNodeFactory {
     bool is_vbind = false;
     String bind_value;
     var conditionStr = ifAttr.value;
-    conditionStr.replaceAllMapped(VBIND_REG, (matched) {
+    conditionStr.replaceAllMapped(VIRTUAL_BIND_REG, (matched) {
       if (matched is RegExpMatch) {
         var value = matched.group(2);
         if (value != null && node.parent != null) {
@@ -418,7 +428,7 @@ class XDMLNodeFactory {
   }
 
   String resolveControllerBinding(String expression) {
-    return expression.replaceAllMapped(CBIND_REG, (matched) {
+    return expression.replaceAllMapped(INSTANCE_BIND_REG, (matched) {
       if (matched is RegExpMatch) {
         var value = matched.group(2);
         if (value != null) {
@@ -592,7 +602,8 @@ class XDMLNodeFactory {
     var valid = false;
     var tempExpre = resolveControllerBinding(expression);
     // print("input $tempExpre --> matched:${INSERT_REG.hasMatch(tempExpre)}");
-    var newExpression = tempExpre.replaceAllMapped(INSERT_REG, (matched) {
+    var newExpression =
+        tempExpre.replaceAllMapped(INSERT_EXPRESSION_REG, (matched) {
       if (matched is RegExpMatch) {
         if (valid == false) valid = true;
         // var insertExp = matched.group(1);
