@@ -193,7 +193,7 @@ class XDMLNodeFactory {
     // List<FormalParameter> paramNameds = [];
     for (var attr in attrs) {
       // print(attr.name);
-      if (attr.name.startsWith("params")) {
+      if (attr.name == "params") {
         var value = (attr.value == null || attr.value == "") ? "" : attr.value;
         var parameters = value.split(",").map((i) => i.trim());
         for (var param in parameters) {
