@@ -2,7 +2,7 @@
 
 ## versions
 
-### 0.1.0
+### 0.1.0-beta.1
 
 - use new name as `puzzle`
 

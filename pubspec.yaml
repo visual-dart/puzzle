@@ -1,5 +1,5 @@
 name: puzzle
-version: 0.1.0
+version: 0.1.0-beta.1
 description: Visual XAML for Dart/Flutter, Use xdml for developing visual dart/flutter app.
 homepage: https://github.com/miao17game/xdml
 author: bigmogician<bigmogician@outlook.com>
