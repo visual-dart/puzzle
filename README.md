@@ -1,6 +1,6 @@
-# Visual XAML for Dart/Flutter
+# Puzzle Core for Dart/Flutter
 
-Use `xdml` for developing visual dart/flutter app.
+Use `XAML` for developing visual dart/flutter app.
 
 ## Install
 
