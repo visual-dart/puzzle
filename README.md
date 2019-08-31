@@ -4,14 +4,14 @@ Use `XAML` for developing visual dart/flutter app.
 
 ## Install
 
-1. add `xdml` into your `pubspec.yaml`
+1. add `puzzle` into your `pubspec.yaml`
 2. run `flutter packages get`
 
 ## Usage
 
 there is a **[Demo](https://github.com/visual-dart/xdml-demo)** :
 
-> main.xaml
+> main.dart.xaml
 
 ```xml
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -111,7 +111,7 @@ there is a **[Demo](https://github.com/visual-dart/xdml-demo)** :
 ```dart
 import 'dart:async';
 import 'package:flutter/services.dart';
-import 'package:xdml/metadata.dart';
+import 'package:puzzle/metadata.dart';
 import 'package:demo/demo.dart';
 import 'package:flutter/material.dart';
 import 'main.binding.dart';
@@ -123,7 +123,7 @@ class MyApp extends StatefulWidget {
   MyAppState createState() => MyAppState();
 }
 
-@Binding('main.xaml')
+@Binding('main.dart.xaml')
 class MyAppState extends State<MyApp> {
   String platformVersion = 'Unknown';
   final String titleText = 'Hello World';
@@ -240,7 +240,7 @@ group: com.your.owner.group.name
 watch: true
 ```
 
-2. run command `flutter packages pub run xdml --config=config.yaml`
+2. run command `flutter packages pub run puzzle --config=config.yaml`
 3. now check binding files.
 
 ## Work with hot reload
