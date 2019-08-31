@@ -7,8 +7,8 @@ import "../lib/main.dart";
 import '../lib/utils.dart';
 import '../lib/metadata.dart';
 
-// dart xdml.dart --entry=../../../../GIT/fe-assets/assets-flutter/example --group=com.example --watch=true
-// dart xdml.dart --config=demo.config.yaml
+// dart puzzle.dart --entry=../../../../GIT/fe-assets/assets-flutter/example --group=com.example --watch=true
+// dart puzzle.dart --config=demo.config.yaml
 
 void main(List<String> arguments) {
   var argus = parseArguments(arguments);

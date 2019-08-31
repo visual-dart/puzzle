@@ -1,7 +1,6 @@
 import 'dart:core';
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/analysis/features.dart';
-import 'package:xdml/transform.dart';
 
 import 'package:glob/glob.dart' as glob;
 import 'package:path/path.dart' as path;
@@ -10,6 +9,7 @@ import 'package:ansicolor/ansicolor.dart' as color;
 
 import 'xdml/index.dart';
 import 'metadata.dart';
+import "transform.dart";
 
 final BLUE = color.AnsiPen()..blue();
 final GREEN = color.AnsiPen()..green();
@@ -24,7 +24,7 @@ bool isSourceFile(String file) {
 }
 
 void parse(Configuration config) {
-  print(BLUE("===> XDML Compiler"));
+  print(BLUE("===> Puzzle Compiler"));
   // print("$entry/**.dart");
   final _glob = new glob.Glob("${config.entry}/**.dart");
   var fileList = _glob.listSync();
@@ -34,7 +34,7 @@ void parse(Configuration config) {
         "${CYAN("file loaded")} -> ${GRAY(path.relative(item.path, from: config.entry))}");
   }
   List<List<String>> relations = [];
-  print(GREEN("===> xdml compilation start ..."));
+  print(GREEN("===> Puzzle compilation start ..."));
   for (var i in fileList) {
     if (!isSourceFile(i.path)) continue;
     parseLib(
@@ -45,9 +45,9 @@ void parse(Configuration config) {
         connect: true,
         throwOnError: config.throwOnError);
   }
-  print(GREEN("===> xdml compilation done."));
+  print(GREEN("===> Puzzle compilation done."));
   if (!config.watch) return;
-  print(MAGENTA("===> xdml watcher is running..."));
+  print(MAGENTA("===> Puzzle watcher is running..."));
   var _watcher = watcher.DirectoryWatcher(config.entry);
   _watcher.events.listen((event) {
     var changedPath = path.relative(event.path);
