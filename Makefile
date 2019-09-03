@@ -1,6 +1,6 @@
 
 build:
-	dart2aot bin/xdml.dart bin/xdml.dart.aot
+	dart2aot bin/puzzle.dart bin/puzzle.dart.aot
 
 start:
-	cd bin && dart xdml.dart --config=demo.config.yaml
+	cd bin && dart puzzle.dart --config=demo.config.yaml
