@@ -1,16 +1,14 @@
 name: puzzle
-version: 0.1.0-beta.1
-description: Visual XAML for Dart/Flutter, Use xdml for developing visual dart/flutter app.
-homepage: https://github.com/miao17game/xdml
+version: 0.1.0-beta.2
+description: Visual XAML for Dart/Flutter, Use puzzle for developing visual dart/flutter app.
+homepage: https://github.com/visual-dart/puzzle
 author: bigmogician<bigmogician@outlook.com>
 
 environment:
-  sdk: ">=2.3.0 <3.0.0"
+  sdk: ">=2.1.0 <3.0.0"
 
 dependencies:
   analyzer: ^0.38.1
-  build: ^1.0.0
-  source_gen: ^0.9.0
   glob: ^1.1.7
   xml: ^3.4.0
   yaml: ^2.1.15
